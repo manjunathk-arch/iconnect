@@ -959,15 +959,6 @@ def iconnect_form_view(request):
         else:
             ticket.location = user.location
             
-
-        # ------------------------------------------------------
-        # 🔢 FIX 2 — AUTO GENERATE TICKET NUMBER
-        # ------------------------------------------------------
-        if not ticket.ticket_number:
-            latest = Ticket.objects.order_by('-id').first()
-            next_id = (latest.id + 1) if latest else 1
-            ticket.ticket_number = f"TIK-{next_id:05d}"
-
         # ------------------------------------------------------
         # 👨‍💼 OWNER ASSIGNMENT LOGIC
         # ------------------------------------------------------
