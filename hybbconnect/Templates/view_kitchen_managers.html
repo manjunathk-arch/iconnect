@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h3 class="text-teal fw-bold mb-4 text-center">👨‍🍳 Kitchen Managers</h3>
+  {% if kitchen_managers %}
+    <table class="table table-hover shadow-sm">
+      <thead class="table-light">
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Location</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for km in kitchen_managers %}
+          <tr>
+            <td>{{ km.first_name }}</td>
+            <td>{{ km.email }}</td>
+            <td>{{ km.location.name }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="text-muted text-center">No kitchen managers found.</p>
+  {% endif %}
+</div>
+{% endblock %}

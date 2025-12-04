@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Reassign Ticket{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <h3>Reassign Ticket #{{ ticket.id }}</h3>
+    <p><strong>Concern:</strong> {{ ticket.concern }}</p>
+    <form method="POST">
+        {% csrf_token %}
+        <div class="mb-3">
+            <label for="new_owner" class="form-label">Select New Owner/Manager:</label>
+            <select class="form-select" name="new_owner" required>
+                <option value="">-- Select --</option>
+                {% for person in owners_managers %}
+                    <option value="{{ person.id }}">{{ person.username }} ({{ person.get_role_display }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Reassign</button>
+        <a href="{% url 'owner_dashboard' %}" class="btn btn-secondary">Cancel</a>
+    </form>
+</div>
+{% endblock %}

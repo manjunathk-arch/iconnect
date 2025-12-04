@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex">
+
+    <!-- 🧭 Sidebar -->
+    <div class="sidebar p-4 shadow-sm">
+        <h4 class="text-center mb-4 fw-bold text-white">HybbConnect</h4>
+
+        <a href="{% url 'cluster_dashboard' %}" class="active">🏠 Dashboard</a>
+        <a href="{% url 'raise_staff_log' %}">🧾 Raise Staff Log</a>
+        <a href="{% url 'iconnect_form' %}">📝 Raise iConnect</a>
+        <a href="{% url 'logout' %}">🚪 Logout</a>
+    </div>
+
+    <!-- 🎟️ Main Content -->
+    <div class="main-content flex-grow-1 p-4">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+
+                <h4 class="text-teal mb-3 fw-bold">🎟️ iConnect Tickets for Your Cluster</h4>
+
+                {% if tickets %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Ticket #</th>
+                                <th>Employee Name</th>
+                                <th>Employee ID</th>
+                                <th>Category</th>
+                                <th>Concern</th>
+                                <th>Status</th>
+                                <th>Location</th>
+                                <th>Action</th>
+                                <th>Closing Remarks</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            {% for t in tickets %}
+                            <tr>
+                                <td>{{ t.ticket_number }}</td>
+                                <td>{{ t.name }}</td>
+                                <td>{{ t.employee_code }}</td>
+                                <td>{{ t.concern_category }}</td>
+                                <td>{{ t.concern }}</td>
+
+                                <td>
+                                    {% if t.status == "Open" %}
+                                        <span class="badge bg-warning text-dark">Open</span>
+                                    {% elif t.status == "Reassigned" %}
+                                        <span class="badge bg-info text-dark">Reassigned</span>
+                                    {% elif t.status == "Resolved" %}
+                                        <span class="badge bg-success">Resolved</span>
+                                    {% elif t.status == "Closed" %}
+                                        <span class="badge bg-secondary">Closed</span>
+                                    {% elif t.status == "Confirmed" %}
+                                        <span class="badge bg-teal text-white">Confirmed</span>
+                                    {% endif %}
+                                </td>
+
+                                <td>{{ t.location }}</td>
+
+                                <td>
+                                    {% if t.status == "Reassigned" %}
+                                        <a href="{% url 'close_cluster_ticket' t.id %}" class="btn btn-sm btn-outline-danger">Close</a>
+                                    {% elif t.status == "Resolved" %}
+                                        <a href="{% url 'confirm_cluster_ticket' t.id %}" class="btn btn-sm btn-outline-success">Confirm</a>
+                                    {% else %}
+                                        <span class="text-muted small">No action</span>
+                                    {% endif %}
+                                </td>
+
+                                <td>
+                                    {% if t.status == "Closed" and t.closing_remarks %}
+                                        <button class="btn btn-info btn-sm" data-bs-toggle="modal"
+                                                data-bs-target="#remarks{{ t.id }}">
+                                            View
+                                        </button>
+                                    {% else %}
+                                        <span class="text-muted small">—</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% else %}
+                <p class="text-muted">No tickets found for your locations.</p>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- 🎨 Modal for Closing Remarks -->
+{% for t in tickets %}
+<div class="modal fade" id="remarks{{ t.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">Closing Remarks</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <p>{{ t.closing_remarks }}</p>
+                <hr>
+                <small class="text-muted">
+                    Closed on: {{ t.closed_at|date:"d M Y, h:i A" }}
+                </small>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- 🎨 Styles -->
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+
+    .text-teal {
+        color: #009688;
+    }
+
+    /* Sidebar Styling */
+    .sidebar {
+        width: 240px;
+        background-color: #009688;
+        min-height: 100vh;
+        color: #ffffff;
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+    }
+
+    .sidebar a {
+        color: #e0f2f1;
+        padding: 12px 18px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        text-decoration: none;
+        transition: 0.3s;
+        font-weight: 500;
+    }
+
+    .sidebar a:hover,
+    .sidebar a.active {
+        background-color: #00796b;
+        color: #fff;
+    }
+
+    .main-content {
+        margin-left: 260px;
+    }
+
+    table thead th {
+        font-weight: 600;
+        color: #555;
+    }
+
+    @media (max-width: 768px) {
+        .sidebar {
+            position: relative;
+            width: 100%;
+            min-height: auto;
+        }
+        .main-content {
+            margin-left: 0;
+            margin-top: 20px;
+        }
+    }
+</style>
+
+{% endblock %}

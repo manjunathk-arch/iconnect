@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-5 mb-5">
+
+  <!-- 🔙 Back Button (Role Based) -->
+  {% if user.role == "kitchen_staff" %}
+    <a href="{% url 'staff_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+  {% elif user.role == "kitchen_manager" %}
+    <a href="{% url 'manager_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+  {% elif user.role == "cluster_manager" %}
+    <a href="{% url 'cluster_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+  {% elif user.role == "owner" %}
+    <a href="{% url 'owner_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+  {% elif user.role == "admin" %}
+    <a href="{% url 'admin_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+  {% else %}
+    <a href="{% url 'dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back</a>
+  {% endif %}
+
+  <!-- 🌿 Page Header -->
+  <div class="text-center mb-5 fade-in">
+    <h2 class="fw-bold text-teal mb-2 display-6">📝 Raise Staff Log</h2>
+    <p class="text-muted fs-5">Record staff performance, behaviour, or incidents efficiently</p>
+  </div>
+
+  <!-- ✨ Form Card -->
+  <div class="card border-0 shadow-lg rounded-4 mx-auto fade-in-slow" style="max-width: 720px;">
+    <div class="card-body p-5">
+
+      <!-- Success Messages -->
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-success text-center fw-semibold py-2 mb-4 rounded-3 shadow-sm fade-in-fast">
+            {{ message }}
+          </div>
+        {% endfor %}
+      {% endif %}
+
+      <!-- 🧾 Staff Log Form -->
+      <form method="POST" novalidate>
+        {% csrf_token %}
+
+        <!-- Staff -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold text-secondary">👩‍🍳 Staff Member</label>
+          {{ form.staff }}
+        </div>
+
+        <!-- Category -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold text-secondary">📂 Category</label>
+          {{ form.category }}
+        </div>
+
+        <!-- Remarks -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold text-secondary">🗒️ Remarks / Notes</label>
+          {{ form.remarks }}
+        </div>
+
+        <!-- Log Date -->
+        <div class="mb-4">
+          <label class="form-label fw-semibold text-secondary">📅 Date of Log</label>
+          {{ form.log_date }}
+        </div>
+
+        <!-- Location (Only for Cluster Managers) -->
+        {% if form.location.is_hidden == False %}
+          <div class="mb-4">
+            <label class="form-label fw-semibold text-secondary">📍 Location</label>
+            {{ form.location }}
+          </div>
+        {% endif %}
+
+        <!-- Buttons -->
+        <div class="text-center mt-4">
+          <button type="submit" class="btn btn-teal text-white px-5 py-2 fw-semibold rounded-pill shadow-sm">
+            ✅ Submit Log
+          </button>
+
+          <a href="{% if user.role == 'cluster_manager' %}{% url 'cluster_dashboard' %}{% else %}{% url 'manager_dashboard' %}{% endif %}"
+             class="btn btn-outline-secondary ms-2 px-5 py-2 fw-semibold rounded-pill">
+            ← Back
+          </a>
+        </div>
+
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- 🎨 Improved Styling -->
+<style>
+  /* Color Palette */
+  .text-teal { color: #18b892 !important; }
+
+  .btn-teal {
+    background-color: #18b892;
+    border: none;
+    transition: all 0.25s ease;
+  }
+  .btn-teal:hover {
+    background-color: #129a77;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(18, 154, 119, 0.25);
+  }
+
+  /* Inputs */
+  select, textarea, input {
+    border-radius: 0.65rem !important;
+    border: 1px solid #d0d7dd;
+    transition: all 0.2s ease;
+    padding: 0.65rem !important;
+  }
+  select:focus, textarea:focus, input:focus {
+    border-color: #18b892;
+    box-shadow: 0 0 0 0.2rem rgba(24, 184, 146, 0.2);
+  }
+
+  /* Card */
+  .card {
+    border-radius: 1.2rem !important;
+    background: #ffffff;
+  }
+
+  /* Alerts */
+  .alert-success {
+    background-color: #e8f9f2;
+    color: #117a52;
+    border: 1px solid #c9efe0;
+  }
+
+  /* Animations */
+  .fade-in { animation: fadeIn 0.6s ease; }
+  .fade-in-slow { animation: fadeIn 0.9s ease; }
+  .fade-in-fast { animation: fadeIn 0.4s ease; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+
+{% endblock %}

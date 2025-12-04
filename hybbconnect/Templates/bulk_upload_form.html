@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+.upload-container {
+    background: #fff;
+    padding: 25px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    max-width: 800px;
+    margin: 40px auto;
+}
+.section-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #008080;
+    margin-bottom: 15px;
+}
+p {
+    margin-bottom: 20px;
+    color: #555;
+}
+.btn-upload {
+    background-color: #008080;
+    border: none;
+    color: white;
+    padding: 8px 20px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+.btn-upload:hover {
+    background-color: #006666;
+}
+.btn-cancel {
+    background-color: #6c757d;
+    border: none;
+    color: white;
+    padding: 8px 20px;
+    border-radius: 4px;
+    margin-left: 8px;
+}
+.btn-cancel:hover {
+    background-color: #5a6268;
+}
+.required-columns {
+    margin-top: 25px;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+.required-columns span {
+    font-weight: bold;
+    color: #000;
+    display: block;
+    margin-bottom: 5px;
+}
+.required-columns code {
+    background: #f8f9fa;
+    padding: 4px 7px;
+    border-radius: 4px;
+    margin: 4px 4px 0 0;
+    display: inline-block;
+    font-size: 0.9rem;
+}
+</style>
+
+<div class="upload-container">
+    <div class="section-title">📊 Bulk Upload Staff Performance</div>
+    <p>Upload a CSV or Excel file containing performance data.</p>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn-upload">Upload</button>
+        <a href=".." class="btn-cancel">Cancel</a>
+    </form>
+
+    <div class="required-columns">
+        <span>Required Columns:</span>
+        <code>employee_id</code>
+        <code>month</code>
+        <code>bau_status</code>
+        <code>rating</code>
+        <code>incentive</code>
+        <code>ot_sacoff_amount</code>
+        <code>referral_bonus</code>
+        <code>dsat_deduction</code>
+        <code>wrong_order_deduction</code>
+        <code>mrd_deduction_staff</code>
+        <code>other_deduction</code>
+        <code>earning_total</code>
+        <code>deduction_total</code>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,14 @@
+{% extends "admin/change_list.html" %}
+{% load static %}
+{% block object-tools %}
+<div class="object-tools">
+  <ul>
+    <li>
+      <a href="{% url 'admin:staffperformance_bulk_upload' %}" class="button" style="background-color:#008080; color:white;">
+        📤 Bulk Upload Staff Performance
+      </a>
+    </li>
+  </ul>
+</div>
+{{ block.super }}
+{% endblock %}

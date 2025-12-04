@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="d-flex">
+  <!-- 🧭 Sidebar -->
+  <div class="sidebar p-4 shadow-sm">
+      <h4 class="text-center mb-4 fw-bold text-white">HybbConnect</h4>
+
+      <a href="{% url 'cluster_dashboard' %}" class="active">🏠 Dashboard</a>
+      <a href="{% url 'raise_staff_log' %}">🧾 Raise Staff Log</a>
+      <a href="{% url 'iconnect_form' %}">📝 Raise iConnect</a>
+      <a href="{% url 'view_cluster_tickets' %}">🎟️ View Cluster Tickets</a>
+      <a href="{% url 'upload_order_photo' %}">🎫 Uplode Photo</a>
+            <!-- ⭐ NEW MENU ITEM ADDED HERE -->
+      <a href="{% url 'view_order_photos' %}">📸 View Order Photos</a>
+      <a href="{% url 'logout' %}">🚪 Logout</a>
+  </div>
+
+  <!-- 📊 Main Dashboard -->
+  <div class="main-content flex-grow-1 p-4">
+    <!-- Header -->
+    <div class="text-center mb-5">
+        <h2 class="fw-bold text-teal">Cluster Manager Dashboard</h2>
+        <p class="text-muted">Monitor your cluster, manage staff, and view kitchen activity.</p>
+    </div>
+
+    <!-- Dashboard Cards -->
+    <div class="row g-4">
+
+      <!-- Kitchen Managers -->
+      <div class="col-md-3">
+          <a href="{% url 'view_kitchen_managers' %}" class="text-decoration-none">
+              <div class="card slicer-card h-100 text-center shadow-sm">
+                  <div class="card-body">
+                      <div class="display-5 text-teal mb-3">👨‍🍳</div>
+                      <h5 class="fw-bold text-dark">Kitchen Managers</h5>
+                      <p class="text-muted small mb-0">
+                          {% if kitchen_managers %}
+                              {{ kitchen_managers|length }} active
+                          {% else %}
+                              No data
+                          {% endif %}
+                      </p>
+                  </div>
+              </div>
+          </a>
+      </div>
+
+      <!-- Kitchen Staff -->
+      <div class="col-md-3">
+          <a href="{% url 'view_kitchen_staff' %}" class="text-decoration-none">
+              <div class="card slicer-card h-100 text-center shadow-sm">
+                  <div class="card-body">
+                      <div class="display-5 text-teal mb-3">👩‍🍳</div>
+                      <h5 class="fw-bold text-dark">Kitchen Staff</h5>
+                      <p class="text-muted small mb-0">
+                          {% if kitchen_staff %}
+                              {{ kitchen_staff|length }} total
+                          {% else %}
+                              No data
+                          {% endif %}
+                      </p>
+                  </div>
+              </div>
+          </a>
+      </div>
+
+      <!-- Kitchen Logs -->
+      <div class="col-md-3">
+          <a href="{% url 'view_kitchen_logs' %}" class="text-decoration-none">
+              <div class="card slicer-card h-100 text-center shadow-sm">
+                  <div class="card-body">
+                      <div class="display-5 text-teal mb-3">📋</div>
+                      <h5 class="fw-bold text-dark">Recent Kitchen Logs</h5>
+                      <p class="text-muted small mb-0">
+                          {% if kitchen_logs %}
+                              {{ kitchen_logs|length }} entries
+                          {% else %}
+                              No logs yet
+                          {% endif %}
+                      </p>
+                  </div>
+              </div>
+          </a>
+      </div>
+
+      <!-- Raise iConnect -->
+      <div class="col-md-3">
+          <a href="{% url 'iconnect_form' %}" class="text-decoration-none">
+              <div class="card slicer-card h-100 text-center shadow-sm">
+                  <div class="card-body">
+                      <div class="display-5 text-teal mb-3">📝</div>
+                      <h5 class="fw-bold text-dark">Raise iConnect</h5>
+                      <p class="text-muted small mb-0">Submit a new iConnect ticket</p>
+                  </div>
+              </div>
+          </a>
+      </div>
+    </div>
+
+    <!-- 📍 Assigned Locations -->
+    <div class="card mt-4 border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="text-teal mb-3">📍 Assigned Locations</h5>
+        {% if assigned_locations %}
+          <ul class="list-unstyled mb-0">
+            {% for loc in assigned_locations %}
+              <li><i class="bi bi-geo-alt text-teal me-2"></i>{{ loc.name }}</li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="text-muted">No locations assigned.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 🎨 Styles -->
+<style>
+  body {
+      background-color: #f8f9fa;
+  }
+
+  .text-teal {
+      color: #009688;
+  }
+
+  .btn-teal {
+      background-color: #20c997;
+      border: none;
+  }
+
+  .btn-teal:hover {
+      background-color: #17a589;
+  }
+
+  /* Sidebar Styling */
+  .sidebar {
+      width: 240px;
+      background-color: #009688;
+      min-height: 100vh;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+  }
+
+  .sidebar a {
+      color: #e0f2f1;
+      text-decoration: none;
+      padding: 12px 18px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      transition: background 0.3s ease;
+      display: block;
+      font-weight: 500;
+  }
+
+  .sidebar a:hover, .sidebar a.active {
+      background-color: #00796b;
+      color: #ffffff;
+  }
+
+  .main-content {
+      margin-left: 260px;
+  }
+
+  .slicer-card {
+      border-radius: 15px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+  }
+
+  .slicer-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+      background-color: #e6f8f3;
+  }
+
+  table thead th {
+      font-weight: 600;
+      color: #555;
+  }
+</style>
+
+{% endblock %}

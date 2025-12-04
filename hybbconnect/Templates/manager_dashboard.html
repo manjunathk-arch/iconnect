@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+
+        <!-- Sidebar -->
+        <div class="col-md-2 sidebar bg-dark text-white p-0" style="min-height: 100vh;">
+            
+            <!-- Logo Top Center -->
+            <div class="text-center py-3">
+                <img src="{% static 'images/academy_logo.png' %}" 
+                     alt="BigBites Academy Logo" 
+                     class="img-fluid" 
+                     style="width: 180px;">
+                <h5 class="mt-2">HybbConnect</h5>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="nav flex-column px-3">
+                <a href="{% url 'manager_dashboard' %}" class="nav-link text-white">🏠 Dashboard</a>
+                <a href="{% url 'raise_staff_log' %}" class="nav-link text-white">📝 Raise Staff Log</a>
+                <a href="{% url 'view_kitchen_logs' %}" class="nav-link text-white">📝 Recent Kitchen Logs</a>
+                <a href="{% url 'view_order_photos' %}" class="nav-link text-white">📝 View Order Photos</a>
+                <a href="{% url 'upload_order_photo' %}" class="nav-link text-white">🎫 Upload Photo</a>
+                
+                <a href="{% url 'iconnect_form' %}" class="btn btn-primary mt-3 w-100 text-start">
+                    <i class="bi bi-envelope-paper"></i> Raise IConnect Ticket
+                </a>
+
+                <a href="{% url 'logout' %}" class="nav-link text-white mt-2">🚪 Logout</a>
+            </nav>
+
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-10 p-0">
+            <div class="header d-flex justify-content-between align-items-center p-3 mb-4 bg-white shadow-sm">
+                <h4>Welcome, {{ request.user.username }} 👋</h4>
+                <div>
+                    <strong>Employee ID:</strong> {{ request.user.employee_id|default:"N/A" }} |
+                    <strong>Role:</strong> {{ request.user.get_role_display|default:"N/A" }}
+                </div>
+            </div>
+
+            <div class="content px-4">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-info">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
+                <!-- Assigned Tickets -->
+                <div class="card shadow-sm mb-4 p-4">
+                    <h5 class="fw-semibold mb-3">Assigned Tickets</h5>
+                    {% if tickets %}
+                        <div class="table-responsive">
+                            <table class="table table-striped align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Concern</th>
+                                        <th>Status</th>
+                                        <th>Location</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for ticket in tickets %}
+                                        <tr>
+                                            <td>{{ ticket.id }}</td>
+                                            <td>{{ ticket.concern }}</td>
+                                            <td>
+                                                <span class="badge bg-{% if ticket.status == 'Resolved' %}success{% elif ticket.status == 'Pending' %}warning{% else %}info{% endif %}">
+                                                    {{ ticket.status }}
+                                                </span>
+                                            </td>
+                                            <td>{{ ticket.location }}</td>
+                                            <td>
+                                                {% if ticket.status != "Resolved" %}
+                                                    <a href="{% url 'resolve_ticket' ticket.id %}" class="btn btn-success btn-sm">Mark Resolved</a>
+                                                {% else %}
+                                                    <span class="text-muted small">Awaiting Staff Confirmation</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No tickets assigned to you.</p>
+                    {% endif %}
+                </div>
+
+                <!-- Staff Logs Table -->
+                <div class="card shadow-sm p-4 mb-5">
+                    <h5 class="fw-semibold mb-3">Staff Logs ({{ request.user.location.name|default:"N/A" }})</h5>
+                    {% if staff_logs %}
+                        <div class="table-responsive">
+                            <table class="table table-bordered align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Log Date</th>
+                                        <th>Staff</th>
+                                        <th>Category</th>
+                                        <th>Remarks</th>
+                                        <th>Date Created</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for log in staff_logs %}
+                                        <tr>
+                                            <td>{{ log.log_date|date:"d M Y" }}</td>
+                                            <td>{{ log.emp_name }} ({{ log.emp_id }})</td>
+                                            <td>{{ log.category }}</td>
+                                            <td>{{ log.remarks|default:"—" }}</td>
+                                            <td>{{ log.created_at|date:"d M Y, H:i" }}</td>
+                                            <td>
+                                                {% if log.is_acknowledged %}
+                                                    <span class="badge bg-success">✅ Staff Acknowledged</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning text-dark">⏳ Pending</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">No staff logs found for this location.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Sidebar styling */
+    .sidebar .nav-link {
+        padding: 12px 20px;
+        font-weight: 500;
+        border-radius: 6px;
+        margin-bottom: 4px;
+        transition: background-color 0.3s ease;
+    }
+
+    .sidebar .nav-link:hover {
+        background-color: #495057;
+        text-decoration: none;
+    }
+
+    @media (max-width: 768px) {
+        .sidebar {
+            position: relative;
+            height: auto;
+        }
+    }
+</style>
+{% endblock %}

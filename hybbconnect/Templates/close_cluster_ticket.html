@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+
+<div class="container mt-4">
+
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="text-teal fw-bold">
+            🔒 Close Ticket: {{ ticket.ticket_number }}
+        </h4>
+        <a href="{% url 'cluster_dashboard' %}" class="btn btn-outline-secondary">⬅ Back</a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+
+            <form method="POST">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Closing Remarks</label>
+                    <textarea name="closing_remarks" class="form-control" rows="4" placeholder="Enter reason for closing..." required></textarea>
+                </div>
+
+                <button type="submit" class="btn btn-danger px-4">Close Ticket</button>
+                <a href="{% url 'view_cluster_tickets' %}" class="btn btn-secondary px-4">Cancel</a>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .text-teal {
+        color: #009688;
+    }
+</style>
+
+{% endblock %}

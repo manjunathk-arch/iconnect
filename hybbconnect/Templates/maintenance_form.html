@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+    <div class="card shadow-lg border-0 rounded-4 p-4 bg-light">
+        <h2 class="text-center mb-4 text-teal fw-bold">
+            <i class="bi bi-clipboard-check"></i> maintenance_form
+        </h2>
+
+        <!-- ✅ Success Banner -->
+        {% if messages %}
+        <div id="successBanner" class="alert alert-success text-center fw-semibold rounded-3" role="alert">
+            {% for message in messages %}
+                {{ message }}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <form method="POST" class="needs-validation" novalidate>
+            {% csrf_token %}
+
+            <!-- ✅ Select Staff -->
+            <div class="mb-4">
+                <label for="staffSelect" class="form-label fw-semibold text-secondary">
+                    👥 Select Staff
+                </label>
+                <select id="staffSelect" class="form-select form-select-lg shadow-sm rounded-3">
+                    <option value="">--- Select Staff ---</option>
+                    {% for staff in staff_list %}
+                        <option value="{{ staff.employee_id }}" 
+                                data-name="{{ staff.username }}" 
+                                data-location="{{ staff.location.name }}">
+                            {{ staff.username }} ({{ staff.employee_id }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- ✅ Auto-filled Fields -->
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label fw-semibold text-secondary">Employee Code</label>
+                    {{ form.employee_code }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label fw-semibold text-secondary">Name</label>
+                    {{ form.name }}
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label fw-semibold text-secondary">Location</label>
+                    {{ form.location }}
+                </div>
+            </div>
+
+            <!-- ✅ Concern Section -->
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold text-secondary">Concern Category</label>
+                    {{ form.concern_category }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label fw-semibold text-secondary">Concern</label>
+                    <select id="id_concern" name="concern" class="form-select shadow-sm rounded-3">
+                        <option value="">--- Select Concern ---</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold text-secondary">Description</label>
+                {{ form.description }}
+            </div>
+
+            <!-- ✅ Submit Button -->
+            <div class="text-center">
+                <button type="submit" class="btn btn-teal px-5 py-2 rounded-pill fw-semibold shadow-sm">
+                    Submit
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ✅ Custom Theme Styling -->
+<style>
+    /* 🌿 Teal + Gray Theme */
+    .text-teal {
+        color: #009688 !important;
+    }
+    .btn-teal {
+        background: linear-gradient(90deg, #009688, #26a69a);
+        color: white;
+        border: none;
+        transition: all 0.3s ease-in-out;
+    }
+    .btn-teal:hover {
+        background: linear-gradient(90deg, #00796b, #009688);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 150, 136, 0.3);
+    }
+    .form-control, .form-select {
+        border-radius: 0.5rem;
+        border: 1px solid #ccc;
+        transition: border-color 0.2s ease-in-out, box-shadow 0.2s;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #009688;
+        box-shadow: 0 0 0 0.2rem rgba(0,150,136,0.2);
+    }
+    #successBanner {
+        animation: fadeSlide 0.6s ease-out;
+        background-color: #d0f2ec;
+        border: 1px solid #26a69a;
+        color: #004d40;
+    }
+    @keyframes fadeSlide {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .card {
+        background-color: #f8f9fa;
+    }
+</style>
+
+<!-- ✅ JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // 🌟 Success Banner Auto-hide
+    const banner = document.getElementById("successBanner");
+    if (banner) setTimeout(() => banner.style.display = "none", 6000);
+
+    // 🌟 Auto-fill Employee Fields
+    const staffSelect = document.getElementById("staffSelect");
+    const codeField = document.getElementById("id_employee_code");
+    const nameField = document.getElementById("id_name");
+    const locationField = document.getElementById("id_location");
+
+    staffSelect.addEventListener("change", function () {
+        const selected = this.options[this.selectedIndex];
+        const empCode = selected.value;
+        const empName = selected.getAttribute("data-name");
+        const empLoc = selected.getAttribute("data-location");
+
+        codeField.value = empCode;
+        nameField.value = empName;
+        locationField.value = empLoc;
+    });
+
+    // 🌟 Concern Options Logic
+    const concernOptions = {
+        "Asset movement": [
+            "Equipment movment"
+        ],
+        "Connectivity & internet": [
+            "DVR box fixing","Internet Issue","Landline Issue"
+        ],
+        "Equipment required": [
+            "Electrical",
+            "Equipments",
+            "System & Computor"
+        ],
+        "Kitchen & Infra":[
+        "Carpentry","Civil","Electrical","Painting",
+        "Plumbing","welding"],
+        "Pest & Rodent Issue":[
+        "Rodent Issue"],
+        "PMS":[
+        "Exhaust Fan Cleaning"],
+        "Repair & Maintenance":[
+        "CCTV","chiller","DG","Drainage","Electrical",
+        "Electricity","Gas","Gas leakage","Gas service",
+        "Panel Board Issue","RO Tank Cleaning",
+        "Rosa Water",
+        "System & Computor"],
+        "Sale Assets ":[
+        "Cleaning & Shifting",
+        "Electronic Service"]
+    };
+
+    const categorySelect = document.getElementById("id_concern_category");
+    const concernSelect = document.getElementById("id_concern");
+
+    categorySelect.addEventListener("change", function () {
+        const selected = this.value;
+        concernSelect.innerHTML = "<option value=''>--- Select Concern ---</option>";
+
+        if (concernOptions[selected]) {
+            concernOptions[selected].forEach(optionText => {
+                const option = document.createElement("option");
+                option.value = optionText;
+                option.text = optionText;
+                concernSelect.add(option);
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

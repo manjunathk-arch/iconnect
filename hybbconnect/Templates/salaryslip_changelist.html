@@ -1,0 +1,11 @@
+{% extends "admin/change_list.html" %}
+{% block object-tools %}
+<div class="object-tools">
+  <ul>
+    <li>
+      <a href="{% url 'admin:upload_salary' %}" class="addlink">📤 Upload Salary File</a>
+    </li>
+  </ul>
+</div>
+{{ block.super }}
+{% endblock %}

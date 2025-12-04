@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Include Barcode Scanner Library -->
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+<div class="container mt-5">
+
+  {% if user.role == "kitchen_staff" %}
+<a href="{% url 'staff_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+
+{% elif user.role == "kitchen_manager" %}
+<a href="{% url 'manager_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+
+{% elif user.role == "cluster_manager" %}
+<a href="{% url 'cluster_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+
+{% elif user.role == "owner" %}
+<a href="{% url 'owner_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+
+{% elif user.role == "admin" %}
+<a href="{% url 'admin_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+
+{% else %}
+<a href="{% url 'dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back</a>
+{% endif %}
+
+
+  <h3 class="mb-4">📦 Scan & Upload Order Photo</h3>
+
+  <form method="POST" enctype="multipart/form-data" class="card p-4 shadow-sm">
+    {% csrf_token %}
+
+    <!-- 🔢 Order ID + Scan Button -->
+    <div class="mb-3">
+      <label class="form-label fw-bold">Order ID</label>
+
+      <div class="input-group">
+        {{ form.order_id }}
+
+        <!-- 📷 Scan Button -->
+        <button 
+          class="btn btn-outline-primary" 
+          type="button" 
+          onclick="openScanner()">
+          📷 Scan Barcode
+        </button>
+      </div>
+    </div>
+
+    <!-- 📸 Take or Upload Photo -->
+    <div class="mb-3">
+      <label for="id_photo" class="form-label fw-bold">Take or Upload Photo</label>
+      <input 
+        type="file" 
+        name="photo" 
+        id="id_photo" 
+        accept="image/*" 
+        capture="environment"
+        class="form-control"
+        required
+      >
+    </div>
+
+    <button type="submit" class="btn btn-success w-100 mt-2">
+      📤 Upload Photo
+    </button>
+  </form>
+</div>
+
+<!-- Scanner UI -->
+<div id="scanner-box" 
+     style="display:none; margin-top:20px;" 
+     class="container text-center">
+
+  <h5 class="mb-3">📡 Scan Barcode</h5>
+
+  <div id="reader" 
+       style="width: 350px; max-width:100%; margin:auto; border:1px solid #ccc;">
+  </div>
+
+  <button class="btn btn-danger mt-3 w-100" onclick="closeScanner()">
+    ✖ Stop Scanning
+  </button>
+</div>
+
+<script>
+let html5QrCode = null;
+
+function openScanner() {
+  document.getElementById("scanner-box").style.display = "block";
+
+  html5QrCode = new Html5Qrcode("reader");
+
+  const config = {
+      fps: 10,
+      qrbox: { width: 300, height: 200 },
+      formatsToSupport: [
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E
+      ]
+  };
+
+  html5QrCode.start(
+    { facingMode: "environment" },
+    config,
+    (decodedText) => {
+        document.getElementById("id_order_id").value = decodedText;
+
+        html5QrCode.stop()
+          .then(() => {
+            document.getElementById("scanner-box").style.display = "none";
+          });
+
+        alert("Barcode scanned: " + decodedText);
+    },
+    (err) => { /* ignore scan errors */ }
+  )
+  .catch((err) => {
+    alert("Unable to access camera.");
+  });
+}
+
+function closeScanner() {
+  if (html5QrCode) {
+    html5QrCode.stop()
+      .then(() => {
+        document.getElementById("scanner-box").style.display = "none";
+      })
+      .catch(() => {
+        document.getElementById("scanner-box").style.display = "none";
+      });
+  }
+}
+</script>
+
+{% endblock %}

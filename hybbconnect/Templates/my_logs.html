@@ -1,0 +1,72 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="fw-bold text-primary">📝 My Staff Logs</h3>
+        <a href="{% url 'staff_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+            ⬅ Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Staff Logs Section -->
+    <div class="table-responsive">
+        <table class="table table-bordered table-striped text-center align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th>Date</th>
+                    <th>log_date</th>
+                    <th>Category</th>
+                    <th>Remarks</th>
+                    <th>Issued By</th>
+                    <th>Acknowledgment</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log.created_at|date:"d M Y, h:i A" }}</td>
+                    <td>{{ log.log_date|date:"d M Y" }}</td>
+
+                    <td>
+                        {% if log.category == "Behaviour Issue" %}
+                            <span class="badge badge-category badge-behaviour">Behaviour Issue</span>
+                        {% elif log.category == "Grooming" %}
+                            <span class="badge badge-category badge-grooming">Grooming</span>
+                        {% elif log.category == "Assigned Task Not Completed" %}
+                            <span class="badge badge-category badge-performance">Task Not Completed</span>
+                        {% elif log.category == "Reporting Issue" %}
+                            <span class="badge badge-category badge-attendance">Reporting Issue</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ log.category }}</span>
+                        {% endif %}
+                    </td>
+
+                    <td>{{ log.remarks|default:"—" }}</td>
+                    <td>{{ log.created_by.username|default:"—" }}</td>
+
+                    <td>
+                        {% if log.is_acknowledged %}
+                            <span class="text-success fw-bold">✅ Acknowledged</span><br>
+                            <small>{{ log.acknowledged_at|date:"d M Y, h:i A" }}</small>
+                        {% else %}
+                            <form method="post" action="{% url 'acknowledge_log' log.id %}">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-primary">Acknowledge</button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="6">No staff logs available.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+{% endblock %}

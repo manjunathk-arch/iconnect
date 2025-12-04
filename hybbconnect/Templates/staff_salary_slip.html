@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block content %}
+<style>
+  .btn-teal {
+    background-color: #008080;
+    color: white;
+  }
+  .btn-teal:hover {
+    background-color: #006666;
+    color: white;
+  }
+  .back-btn-fixed {
+    position: fixed;
+    top: 80px;
+    left: 20px;
+    z-index: 1050;
+  }
+
+  /* 🌐 Responsive styling */
+  @media (max-width: 768px) {
+    .back-btn-fixed {
+      top: 60px;
+      left: 10px;
+      font-size: 0.85rem;
+      padding: 5px 10px;
+    }
+    .table {
+      display: none; /* Hide table on small screens */
+    }
+    .mobile-slip-card {
+      display: block;
+    }
+  }
+
+  @media (min-width: 769px) {
+    .mobile-slip-card {
+      display: none;
+    }
+  }
+
+  .mobile-slip-card .card {
+    border-left: 4px solid #008080;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+  .text-teal { color: #008080; }
+</style>
+
+<!-- 🔙 Fixed Back Button -->
+<a href="{% url 'staff_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">
+  ← Back to Dashboard
+</a>
+
+<div class="container mt-4">
+  <h4 class="fw-bold mb-3 text-teal text-center">💰 My Salary Draft</h4>
+
+  {% if slips %}
+  <!-- 🖥 Desktop Table View -->
+  <div class="table-responsive">
+    <table class="table table-bordered table-striped align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Month</th>
+          <th>Year</th>
+          <th>Present Days</th>
+          <th>LOP Days</th>
+          <th>Net Pay</th>
+          <th>View</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for slip in slips %}
+        <tr>
+          <td>{{ slip.month }}</td>
+          <td>{{ slip.year }}</td>
+          <td>{{ slip.present_days }}</td>
+          <td>{{ slip.lop_days }}</td>
+          <td>₹ {{ slip.net_pay }}</td>
+          <td>
+            <button class="btn btn-outline-teal btn-sm" data-bs-toggle="modal" data-bs-target="#slipModal{{ slip.id }}">
+              View
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 📱 Mobile Card View -->
+  <div class="mobile-slip-card">
+    {% for slip in slips %}
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+          <h6 class="fw-bold text-teal mb-1">{{ slip.month }} {{ slip.year }}</h6>
+          <span class="badge bg-light text-dark">₹ {{ slip.net_pay }}</span>
+        </div>
+        <p class="mb-1 small text-muted">
+          Present: {{ slip.present_days }} | LOP: {{ slip.lop_days }}
+        </p>
+        <button class="btn btn-sm btn-outline-teal mt-2 w-100" data-bs-toggle="modal" data-bs-target="#slipModal{{ slip.id }}">
+          View Details
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- 🪟 Shared Modals -->
+  {% for slip in slips %}
+  <div class="modal fade" id="slipModal{{ slip.id }}" tabindex="-1" aria-labelledby="modalLabel{{ slip.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-teal text-white">
+          <h6 class="modal-title mb-0" id="modalLabel{{ slip.id }}">Salary Slip - {{ slip.month }} {{ slip.year }}</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body small">
+          <p><strong>No of Days Present:</strong> {{ slip.present_days }}</p>
+          <p><strong>No of LOP Days:</strong> {{ slip.lop_days }}</p>
+          <hr>
+          <h6>Extra Earnings</h6>
+          <ul class="small">
+            <li>Sac Off & OT: ₹{{ slip.sac_off_ot }}</li>
+            <li>Rating Incentive: ₹{{ slip.rating_incentive }}</li>
+            <li>KM/SM MRD Incentive: ₹{{ slip.km_mrd_incentive }}</li>
+            <li>Arrears: ₹{{ slip.arrears }}</li>
+            <li>Referral Bonus: ₹{{ slip.referral_bonus }}</li>
+          </ul>
+          <hr>
+          <h6>Deductions</h6>
+          <ul class="small">
+            <li>MRD Deduction: ₹{{ slip.mrd_deduction }}</li>
+            <li>KM/SM MRD Deduction: ₹{{ slip.km_mrd_deduction }}</li>
+            <li>Photo Missing Deduction: ₹{{ slip.photo_deduction }}</li>
+            <li>Missing/Wrong Item Deduction: ₹{{ slip.missing_item_deduction }}</li>
+          </ul>
+          <hr>
+          <h5 class="text-end fw-bold text-teal">Total Net Pay: ₹{{ slip.net_pay }}</h5>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div class="alert alert-info text-center mt-4">
+    No salary slips available yet.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

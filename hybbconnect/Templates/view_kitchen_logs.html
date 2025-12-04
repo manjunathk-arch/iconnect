@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-5">
+
+  <!-- 🔙 Back to Dashboard -->
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="text-teal fw-bold">📋 Recent Kitchen Logs</h3>
+    {% if user.role == "kitchen_staff" %}
+<a href="{% url 'staff_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+
+{% elif user.role == "kitchen_manager" %}
+<a href="{% url 'manager_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+
+{% elif user.role == "cluster_manager" %}
+<a href="{% url 'cluster_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+
+{% elif user.role == "owner" %}
+<a href="{% url 'owner_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+
+{% elif user.role == "admin" %}
+<a href="{% url 'admin_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+
+{% else %}
+<a href="{% url 'dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back</a>
+{% endif %}
+
+
+    </a>
+  </div>
+
+  <!-- 🔍 Filter Bar -->
+  <form method="get" class="row g-3 mb-4 justify-content-center">
+    <div class="col-md-4">
+      <input 
+        type="text" 
+        name="emp_name" 
+        value="{{ request.GET.emp_name }}" 
+        class="form-control" 
+        placeholder="🔍 Search by Player Name">
+    </div>
+    <div class="col-md-4">
+      <input 
+        type="text" 
+        name="employee_id" 
+        value="{{ request.GET.employee_id }}" 
+        class="form-control" 
+        placeholder="🆔 Search by Employee ID">
+    </div>
+    <div class="col-md-2 d-grid">
+      <button type="submit" class="btn btn-teal text-white fw-bold">Filter</button>
+    </div>
+    <div class="col-md-2 d-grid">
+      <a href="{% url 'view_kitchen_logs' %}" class="btn btn-outline-secondary">Reset</a>
+    </div>
+  </form>
+
+  <!-- 🧾 Logs Table -->
+  {% if kitchen_logs %}
+    <table class="table table-hover shadow-sm align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>Date</th>
+          <th>Log Date</th>
+          <th>Player Name</th>
+          <th>Employee ID</th>
+          <th>Category</th>
+          <th>Remarks</th>
+          <th>Location</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for log in kitchen_logs %}
+          <tr>
+  <td>{{ log.created_at|date:"d M Y, H:i" }}</td>
+  <td>{{ log.log_date|date:"d M Y" }}</td>
+
+  <td>
+    {% if log.staff %}
+        {{ log.staff.first_name }} {{ log.staff.last_name }}
+    {% else %}
+        {{ log.emp_name }}
+    {% endif %}
+  </td>
+
+  <td>{{ log.emp_id }}</td>
+  <td>{{ log.category }}</td>
+  <td>{{ log.remarks }}</td>
+  <td>{{ log.location }}</td>
+
+  <td>
+    {% if log.is_acknowledged %}
+      <span class="badge bg-success">✅ Staff Acknowledged</span>
+    {% else %}
+      <span class="badge bg-warning text-dark">⏳ Pending</span>
+    {% endif %}
+  </td>
+</tr>
+
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="text-muted text-center">No kitchen logs found.</p>
+  {% endif %}
+</div>
+
+<!-- 🎨 Styles -->
+<style>
+  body {
+    background-color: #f8f9fa;
+  }
+
+  .text-teal {
+    color: #009688;
+  }
+
+  .btn-teal {
+    background-color: #009688;
+    border: none;
+  }
+
+  .btn-teal:hover {
+    background-color: #00796b;
+  }
+
+  table thead th {
+    color: #555;
+    font-weight: 600;
+  }
+
+  input::placeholder {
+    color: #888;
+  }
+
+  form input {
+    border-radius: 10px;
+  }
+</style>
+
+{% endblock %}

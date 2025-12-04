@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2>Confirm Ticket Resolution</h2>
+    <hr>
+
+    <div class="card shadow p-4">
+        <h4>Ticket #{{ ticket.ticket_number }} — {{ ticket.concern }}</h4>
+        <p><strong>Description:</strong> {{ ticket.description }}</p>
+        <p><strong>Status:</strong> {{ ticket.status }}</p>
+
+        <form method="POST" class="mt-4">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="remarks">Remarks (optional)</label>
+                <textarea name="remarks" id="remarks" class="form-control" rows="3" placeholder="Add remarks if any..."></textarea>
+            </div>
+            <div class="mt-3">
+                <button type="submit" class="btn btn-success">✅ Confirm & Close</button>
+                <a href="{% url 'staff_dashboard' %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

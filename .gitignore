@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Django
+db.sqlite3
+media/
+order_photos/
+backup_tickets.json
+
+# Environment
+.env
+venv/
+env/
+
+# VSCode
+.vscode/
+
+# Static & build
+staticfiles/

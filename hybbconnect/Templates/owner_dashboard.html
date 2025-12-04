@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Owner Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+
+        <!-- Sidebar -->
+        <div class="col-md-2 sidebar">
+            <h4 class="text-center mb-4">HybbConnect</h4>
+            <a href="{% url 'owner_dashboard' %}">🏠 Dashboard</a>
+            <a href="{% url 'logout' %}">🚪 Logout</a>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-10">
+            <div class="content">
+                <h2 class="mb-4">🎯 Owner Dashboard</h2>
+
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-info">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+
+                {% if tickets %}
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">All Active Tickets</h5>
+                        </div>
+                        <div class="card-body table-responsive">
+                            <table class="table table-striped align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Employee Code</th>
+                                        <th>Employee Name</th>
+                                        <th>Description</th>
+                                        <th>Concern</th>
+                                        <th>Location</th>
+                                        <th>Mobile Number</th>
+                                        <th>Status</th>
+                                        <th>Assigned To</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody>
+                                    {% for ticket in tickets %}
+                                        <tr>
+                                            <td>{{ ticket.ticket_number }}</td>
+                                            <td>{{ ticket.employee.employee_id }}</td>
+                                            <td>{{ ticket.employee.first_name }} {{ ticket.employee.last_name }}</td>
+                                            <td>{{ ticket.description|default:"-" }}</td>
+                                            <td>{{ ticket.concern }}</td>
+                                            <td>{{ ticket.location }}</td>
+                                            <td>{{ ticket.mobile_number }}</td>
+
+                                            <td>
+                                                {% if ticket.status == "Resolved" %}
+                                                    <span class="badge bg-success">{{ ticket.status }}</span>
+                                                {% elif ticket.status == "Closed" %}
+                                                    <span class="badge bg-secondary">{{ ticket.status }}</span>
+                                                {% elif ticket.status == "Rejected" %}
+                                                    <span class="badge bg-danger">{{ ticket.status }}</span>
+                                                {% else %}
+                                                    <span class="badge bg-warning text-dark">{{ ticket.status }}</span>
+                                                {% endif %}
+                                            </td>
+
+                                            <td>{{ ticket.assigned_owner.username|default:"-" }}</td>
+
+                                            <td>
+                                                {% if ticket.status != "Closed" and ticket.status != "Rejected" %}
+                                                    <!-- Resolve -->
+                                                    <button class="btn btn-sm btn-outline-success"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#resolveModal"
+                                                            data-ticket-id="{{ ticket.id }}">
+                                                        ✅ Resolve
+                                                    </button>
+
+                                                    <!-- Reassign -->
+                                                    <button class="btn btn-sm btn-outline-primary"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#reassignModal"
+                                                            data-ticket-id="{{ ticket.id }}">
+                                                        🔁 Reassign
+                                                    </button>
+
+                                                    <!-- Reject -->
+                                                    <button class="btn btn-sm btn-outline-danger"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#rejectModal"
+                                                            data-ticket-id="{{ ticket.id }}">
+                                                        ❌ Reject
+                                                    </button>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr>
+                                            <td colspan="10" class="text-center text-muted">No active tickets found.</td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+
+                            </table>
+                        </div>
+                    </div>
+
+                {% else %}
+                    <p class="text-muted mt-3">No tickets available.</p>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reassign Modal -->
+<div class="modal fade" id="reassignModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg">
+      <div class="modal-header">
+        <h5 class="modal-title">Reassign Ticket</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="modal-body">
+          <input type="hidden" id="reassignTicketId" name="ticket_id">
+
+          <select name="new_owner" class="form-select" required>
+            <option value="">-- Select New Owner / Manager --</option>
+            {% for user in reassign_options %}
+              <option value="{{ user.id }}">{{ user.username }} ({{ user.get_role_display }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="submit" name="action" value="reassign" class="btn btn-primary">🔁 Confirm Reassign</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- Resolve Modal -->
+<div class="modal fade" id="resolveModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg">
+      <div class="modal-header">
+        <h5 class="modal-title">Mark Ticket as Resolved</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="modal-body">
+          <input type="hidden" id="resolveTicketId" name="ticket_id">
+          <label class="form-label">Remarks:</label>
+          <textarea name="remarks" class="form-control" rows="3" required></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="submit" name="action" value="resolve" class="btn btn-success">✅ Mark as Resolved</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow-lg">
+      <div class="modal-header">
+        <h5 class="modal-title">Reject Ticket</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form method="post">
+        {% csrf_token %}
+        <div class="modal-body">
+          <input type="hidden" id="rejectTicketId" name="ticket_id">
+          <label class="form-label">Reason for Rejection:</label>
+          <textarea name="reject_reason" class="form-control" rows="3" required></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="submit" name="action" value="reject" class="btn btn-danger">❌ Confirm Reject</button>
+        </div>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- JS to insert ticket_id into modals -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modals = {
+        reassign: document.getElementById('reassignModal'),
+        resolve: document.getElementById('resolveModal'),
+        reject: document.getElementById('rejectModal')
+    };
+
+    for (const [key, modal] of Object.entries(modals)) {
+        modal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            document.getElementById(`${key}TicketId`).value =
+                button.getAttribute('data-ticket-id');
+        });
+    }
+});
+</script>
+
+{% endblock %}
