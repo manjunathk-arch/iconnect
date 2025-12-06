@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<div class="container mt-4">
+
+    <!-- 🔙 Dynamic Back Button -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            {% if user.role == "kitchen_staff" %}
+                <a href="{% url 'staff_dashboard' %}" class="btn btn-outline-secondary">← Back</a>
+            {% elif user.role == "kitchen_manager" %}
+                <a href="{% url 'manager_dashboard' %}" class="btn btn-outline-secondary">← Back</a>
+            {% elif user.role == "cluster_manager" %}
+                <a href="{% url 'cluster_dashboard' %}" class="btn btn-outline-secondary">← Back</a>
+            {% elif user.role == "owner" %}
+                <a href="{% url 'owner_dashboard' %}" class="btn btn-outline-secondary">← Back</a>
+            {% elif user.role == "admin" %}
+                <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary">← Back</a>
+            {% else %}
+                <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">← Back</a>
+            {% endif %}
+        </div>
+
+        <!-- ⬇ Admin CSV Export -->
+        {% if user.role == "admin" %}
+            <a href="{% url 'export_staff_updates_csv' %}" class="btn btn-success">
+                ⬇ Export CSV
+            </a>
+        {% endif %}
+    </div>
+
+    <!-- 🧾 FORM CARD -->
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+
+                    <h4 class="text-center fw-bold mb-4">Update Staff TO / SAC OFF</h4>
+
+                    <form method="POST">
+                        {% csrf_token %}
+
+                        <!-- Employee -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Employee</label>
+                            {{ form.staff }}
+                        </div>
+
+                        <!-- Type -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Type</label>
+                            {{ form.update_type }}
+                        </div>
+
+                        <!-- 🟦 TO Fields -->
+                        <div id="to_fields" class="border rounded p-3 mb-3" style="display:none;">
+                            <div class="mb-3">
+                                <label class="form-label">OT Hours</label>
+                                {{ form.ot_hours }}
+                            </div>
+
+                            <div class="mb-0">
+                                <label class="form-label">OT Date</label>
+                                {{ form.ot_date }}
+                            </div>
+                        </div>
+
+                        <!-- 🟩 SAC OFF Fields -->
+                        <div id="sac_fields" class="border rounded p-3 mb-3" style="display:none;">
+                            <div class="mb-0">
+                                <label class="form-label">SAC OFF Date</label>
+                                {{ form.sac_off_date }}
+                            </div>
+                        </div>
+
+                        <!-- Remarks -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">Remarks</label>
+                            {{ form.remarks }}
+                        </div>
+
+                        <!-- Submit -->
+                        <div class="d-grid">
+                            <button class="btn btn-primary btn-lg">
+                                ✅ Submit
+                            </button>
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Select2 JS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<script>
+    // Select2 Employee Search
+    $(document).ready(function() {
+        $("#id_staff").select2({
+            width: '100%',
+            placeholder: "Search employee...",
+            allowClear: true
+        });
+    });
+
+    // TO / SAC Toggle
+    function toggleFields() {
+        let type = document.getElementById("id_update_type").value;
+        document.getElementById("to_fields").style.display = type === "TO" ? "block" : "none";
+        document.getElementById("sac_fields").style.display = type === "SAC_OFF" ? "block" : "none";
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        document.getElementById("id_update_type").addEventListener("change", toggleFields);
+        toggleFields();
+    });
+</script>
+
+{% endblock %}

@@ -79,6 +79,8 @@ urlpatterns = [
     path("cluster/update-staff-time/", views.update_staff_time, name="update_staff_time"),
     path("admin/ot-sac-list/", views.admin_ot_sac_list, name="admin_ot_sac_list"),
     path("cluster/ot-sac-list/", views.cluster_ot_sac_list, name="cluster_ot_sac_list"),
+    path('export/staff-updates/', views.export_staff_updates_csv, name='export_staff_updates_csv'),
+
 
 
 

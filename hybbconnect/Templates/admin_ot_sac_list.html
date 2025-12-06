@@ -3,9 +3,25 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h3 class="mb-4">OT & SAC OFF – All Records</h3>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3>OT & SAC OFF – All Records</h3>
 
-    <table class="table table-bordered table-striped">
+        <!-- ✅ Export Button (Admin Only) -->
+        {% if user.role == "admin" %}
+            <a href="{% url 'export_staff_updates_csv' %}" class="btn btn-success shadow">
+                ⬇ Export CSV
+            </a>
+        {% endif %}
+    </div>
+
+    <!-- Back Button -->
+    {% if user.role == "admin" %}
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">
+            ← Back to Dashboard
+        </a>
+    {% endif %}
+
+    <table class="table table-bordered table-striped mt-3">
         <thead class="table-dark">
             <tr>
                 <th>Updated Date</th>
@@ -13,7 +29,7 @@
                 <th>EMP Name</th>
                 <th>Location</th>
                 <th>Type</th>
-                <th>OT/SAC Date</th>
+                <th>OT / SAC Date</th>
                 <th>OT Hours</th>
                 <th>Remarks</th>
             </tr>
@@ -23,12 +39,34 @@
             {% for r in records %}
             <tr>
                 <td>{{ r.updated_at|date:"d-m-Y H:i" }}</td>
-                <td>{{ r.employee.emp_id }}</td>
-                <td>{{ r.employee.name }}</td>
-                <td>{{ r.employee.location }}</td>
-                <td>{{ r.type }}</td>
-                <td>{{ r.date|date:"d-m-Y" }}</td>
-                <td>{{ r.ot_hours }}</td>
+                <td>{{ r.staff.employee_id }}</td>
+                <td>{{ r.staff.get_full_name }}</td>
+                <td>{{ r.staff.location }}</td>
+
+                <td>
+                    {% if r.update_type == "TO" %}
+                        Time Off (TO)
+                    {% else %}
+                        SAC Off
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if r.update_type == "TO" %}
+                        {{ r.ot_date|date:"d-m-Y" }}
+                    {% else %}
+                        {{ r.sac_off_date|date:"d-m-Y" }}
+                    {% endif %}
+                </td>
+
+                <td>
+                    {% if r.update_type == "TO" %}
+                        {{ r.ot_hours }}
+                    {% else %}
+                        ---
+                    {% endif %}
+                </td>
+
                 <td>{{ r.remarks }}</td>
             </tr>
             {% empty %}

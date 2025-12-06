@@ -1484,14 +1484,18 @@ def update_staff_time(request):
 
     return render(request, "update_staff_time.html", {"form": form})
 
-
 @login_required
 def admin_ot_sac_list(request):
     if request.user.role != "admin":
         return HttpResponseForbidden()
 
-    records = StaffTimeUpdate.objects.select_related("employee").order_by("-updated_at")
+    records = StaffTimeUpdate.objects.select_related(
+        "staff",        # FIXED
+        "updated_by"    # Add this for efficiency
+    ).order_by("-updated_at")
+
     return render(request, "admin_ot_sac_list.html", {"records": records})
+
 
 
 @login_required
@@ -1499,9 +1503,52 @@ def cluster_ot_sac_list(request):
     if request.user.role != "cluster_manager":
         return HttpResponseForbidden()
 
-    locations = request.user.assigned_locations.all()
+    # cluster manager has ONE location
+    user_location = request.user.location  
+
+    # Fetch only records belonging to staff in the CM's location
     records = StaffTimeUpdate.objects.filter(
-        employee__location__in=locations
-    ).select_related("employee").order_by("-updated_at")
+        staff__location=user_location
+    ).select_related("staff").order_by("-updated_at")
 
     return render(request, "cluster_ot_sac_list.html", {"records": records})
+
+
+import csv
+from django.http import HttpResponse
+from django.contrib.admin.views.decorators import staff_member_required
+from .models import StaffTimeUpdate
+
+@staff_member_required
+def export_staff_updates_csv(request):
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="staff_time_updates.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        "Employee ID",
+        "Employee Name",
+        "Location",
+        "Type",
+        "OT Hours",
+        "OT Date",
+        "SAC OFF Date",
+        "Remarks",
+        "Updated At",
+    ])
+
+    for item in StaffTimeUpdate.objects.all().order_by('-updated_at'):
+
+        writer.writerow([
+            item.staff.employee_id,
+            item.staff.get_full_name(),
+            item.staff.location,
+            item.update_type,
+            item.ot_hours if item.update_type == "TO" else "",
+            item.ot_date if item.update_type == "TO" else "",
+            item.sac_off_date if item.update_type == "SAC_OFF" else "",
+            item.remarks,
+            item.updated_at,
+        ])
+
+    return response

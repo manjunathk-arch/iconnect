@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 {% block title %}OT & SAC OFF Records (Cluster Manager){% endblock %}
 
+
 {% block content %}
+<a href="{% url 'cluster_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
 <div class="container mt-4">
     <h3 class="mb-4">OT & SAC OFF – My Locations</h3>
 
@@ -13,7 +15,7 @@
                 <th>EMP Name</th>
                 <th>Location</th>
                 <th>Type</th>
-                <th>OT/SAC Date</th>
+                <th>OT / SAC Date</th>
                 <th>OT Hours</th>
                 <th>Remarks</th>
             </tr>
@@ -23,11 +25,30 @@
             {% for r in records %}
             <tr>
                 <td>{{ r.updated_at|date:"d-m-Y H:i" }}</td>
-                <td>{{ r.employee.emp_id }}</td>
-                <td>{{ r.employee.name }}</td>
-                <td>{{ r.employee.location }}</td>
-                <td>{{ r.type }}</td>
-                <td>{{ r.date|date:"d-m-Y" }}</td>
+
+                <!-- Staff fields -->
+                <td>{{ r.staff.employee_id }}</td>
+                <td>{{ r.staff.first_name }} {{ r.staff.last_name }}</td>
+                <td>{{ r.staff.location }}</td>
+
+                <!-- Update type -->
+                <td>
+                    {% if r.update_type == "TO" %}
+                        Time Off (TO)
+                    {% else %}
+                        SAC OFF
+                    {% endif %}
+                </td>
+
+                <!-- Date shown based on type -->
+                <td>
+                    {% if r.update_type == "TO" %}
+                        {{ r.ot_date|date:"d-m-Y" }}
+                    {% else %}
+                        {{ r.sac_off_date|date:"d-m-Y" }}
+                    {% endif %}
+                </td>
+
                 <td>{{ r.ot_hours }}</td>
                 <td>{{ r.remarks }}</td>
             </tr>
