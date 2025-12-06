@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}OT & SAC OFF Records (Cluster Manager){% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h3 class="mb-4">OT & SAC OFF – My Locations</h3>
+
+    <table class="table table-bordered table-striped">
+        <thead class="table-dark">
+            <tr>
+                <th>Updated Date</th>
+                <th>EMP ID</th>
+                <th>EMP Name</th>
+                <th>Location</th>
+                <th>Type</th>
+                <th>OT/SAC Date</th>
+                <th>OT Hours</th>
+                <th>Remarks</th>
+            </tr>
+        </thead>
+
+        <tbody>
+            {% for r in records %}
+            <tr>
+                <td>{{ r.updated_at|date:"d-m-Y H:i" }}</td>
+                <td>{{ r.employee.emp_id }}</td>
+                <td>{{ r.employee.name }}</td>
+                <td>{{ r.employee.location }}</td>
+                <td>{{ r.type }}</td>
+                <td>{{ r.date|date:"d-m-Y" }}</td>
+                <td>{{ r.ot_hours }}</td>
+                <td>{{ r.remarks }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="8" class="text-center text-muted">No Records Found</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

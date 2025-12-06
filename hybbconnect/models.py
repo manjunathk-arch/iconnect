@@ -250,3 +250,30 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+
+
+
+# models.py
+class StaffTimeUpdate(models.Model):
+    TYPE_CHOICES = (
+        ("TO", "Time Off (TO)"),
+        ("SAC_OFF", "SAC Off"),
+    )
+
+    staff = models.ForeignKey(User, on_delete=models.CASCADE, related_name="time_updates")
+    update_type = models.CharField(max_length=20, choices=TYPE_CHOICES)
+
+    # TO fields
+    ot_hours = models.DecimalField(max_digits=4, decimal_places=1, null=True, blank=True)
+    ot_date = models.DateField(null=True, blank=True)
+
+    # SAC OFF fields
+    sac_off_date = models.DateField(null=True, blank=True)
+
+    remarks = models.TextField()
+
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="updated_time_entries")
+    updated_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.staff} - {self.update_type}"

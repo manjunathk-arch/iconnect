@@ -75,6 +75,13 @@ urlpatterns = [
     path("view-order-photos/", views.view_order_photos, name="view_order_photos"),
     path("filter-order-photos/", views.filter_order_photos, name="filter_order_photos"),
 
+    # urls.py
+    path("cluster/update-staff-time/", views.update_staff_time, name="update_staff_time"),
+    path("admin/ot-sac-list/", views.admin_ot_sac_list, name="admin_ot_sac_list"),
+    path("cluster/ot-sac-list/", views.cluster_ot_sac_list, name="cluster_ot_sac_list"),
+
+
+
     
 ]
 

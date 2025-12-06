@@ -1,0 +1,54 @@
+<h4 class="mt-4">OT / SAC OFF Updates</h4>
+
+<table class="table table-bordered table-striped mt-3">
+    <thead class="table-dark">
+        <tr>
+            <th>Updated Date</th>
+            <th>Emp ID</th>
+            <th>Emp Name</th>
+            <th>Location</th>
+            <th>Type</th>
+            <th>OT / SAC OFF Date</th>
+            <th>OT Hours</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for u in updates %}
+        <tr>
+            <td>{{ u.updated_at|date:"d M Y H:i" }}</td>
+            <td>{{ u.staff.emp_id }}</td>
+            <td>{{ u.staff.get_full_name }}</td>
+            <td>{{ u.staff.location.name }}</td>
+
+            <td>
+                {% if u.update_type == "TO" %}
+                    <span class="badge bg-primary">TO</span>
+                {% else %}
+                    <span class="badge bg-warning text-dark">SAC OFF</span>
+                {% endif %}
+            </td>
+
+            <td>
+                {% if u.update_type == "TO" %}
+                    {{ u.ot_date|date:"d M Y" }}
+                {% else %}
+                    {{ u.sac_off_date|date:"d M Y" }}
+                {% endif %}
+            </td>
+
+            <td>
+                {% if u.update_type == "TO" %}
+                    {{ u.ot_hours }}
+                {% else %}
+                    ---
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="7" class="text-center text-muted">No OT/SAC OFF updates found</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

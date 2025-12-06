@@ -221,3 +221,41 @@ class OrderPhotoForm(forms.ModelForm):
         else:
             # Safety fallback
             self.fields.pop("location")
+
+# forms.py
+from django import forms
+from .models import StaffTimeUpdate, User
+
+class StaffTimeUpdateForm(forms.ModelForm):
+    class Meta:
+        model = StaffTimeUpdate
+        fields = ["staff", "update_type", "ot_hours", "ot_date", "sac_off_date", "remarks"]
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user")
+        super().__init__(*args, **kwargs)
+
+        # Only show Kitchen Managers + Kitchen Staff
+        self.fields['staff'].queryset = User.objects.filter(role__in=["kitchen_manager", "kitchen_staff"])
+
+        # Initially hide conditional fields
+        self.fields["ot_hours"].required = False
+        self.fields["ot_date"].required = False
+        self.fields["sac_off_date"].required = False
+
+    def clean(self):
+        cleaned = super().clean()
+        update_type = cleaned.get("update_type")
+
+        if update_type == "TO":
+            if not cleaned.get("ot_hours") or not cleaned.get("ot_date"):
+                raise forms.ValidationError("OT Hours and OT Date are required for TO.")
+            cleaned["sac_off_date"] = None
+
+        if update_type == "SAC_OFF":
+            if not cleaned.get("sac_off_date"):
+                raise forms.ValidationError("SAC OFF date is required.")
+            cleaned["ot_hours"] = None
+            cleaned["ot_date"] = None
+
+        return cleaned

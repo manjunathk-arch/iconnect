@@ -9,9 +9,10 @@ from .models import (
     Location,
     StaffPerformance,
     KitchenLog,
+    StaffTimeUpdate,
     Ticket,
 )
-from .forms import KitchenLogForm, KitchenPlayerForm, IConnectForm
+from .forms import KitchenLogForm, KitchenPlayerForm, IConnectForm, StaffTimeUpdateForm
 from django.db.models import Count
 from .models import CustomUser
 from .forms import IConnectForm
@@ -20,7 +21,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Q
 import csv
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from django.core.paginator import Paginator
 from datetime import timedelta
 import csv
@@ -361,6 +362,12 @@ def cluster_dashboard(request):
         location__in=[loc.code for loc in assigned_locations]
     ).order_by("-created_at")[:10]
 
+    # ✅ OT / SAC OFF Updates ONLY for staff in allocated locations
+    updates = StaffTimeUpdate.objects.filter(
+        staff__location__in=assigned_locations
+    ).select_related("staff", "staff__location").order_by("-updated_at")
+
+
     return render(request, "cluster_dashboard.html", {
         "assigned_locations": assigned_locations,
         "kitchen_managers": kitchen_managers,
@@ -615,6 +622,15 @@ def admin_dashboard(request):
     locations = Ticket.objects.values_list("location", flat=True).distinct()
     categories = Ticket.objects.values_list("concern", flat=True).distinct()
 
+    # -------------------------------------------------------
+    # OT / SAC OFF UPDATES (SHOW ALL FOR ADMIN)
+    # -------------------------------------------------------
+    updates = StaffTimeUpdate.objects.select_related(
+        "staff", "staff__location"
+    ).order_by("-updated_at")
+
+    staff_time_updates = StaffTimeUpdate.objects.select_related("staff", "updated_by").order_by("-updated_at")
+
     # -----------------------------------
     # CONTEXT
     # -----------------------------------
@@ -637,6 +653,7 @@ def admin_dashboard(request):
         "selected_status": status,
         "selected_assigned_to": assigned_to_raw,
         "selected_location": location,
+        "staff_time_updates": staff_time_updates,
     }
 
     return render(request, "admin_dashboard.html", context)
@@ -1448,3 +1465,43 @@ def view_order_photos(request):
     ).order_by("-uploaded_at")
 
     return render(request, "view_order_photos.html", {"photos": photos})
+
+
+# views.py
+@login_required
+@user_passes_test(is_cluster_manager)
+def update_staff_time(request):
+    if request.method == "POST":
+        form = StaffTimeUpdateForm(request.POST, user=request.user)
+        if form.is_valid():
+            entry = form.save(commit=False)
+            entry.updated_by = request.user
+            entry.save()
+            messages.success(request, "Updated successfully.")
+            return redirect("cluster_dashboard")
+    else:
+        form = StaffTimeUpdateForm(user=request.user)
+
+    return render(request, "update_staff_time.html", {"form": form})
+
+
+@login_required
+def admin_ot_sac_list(request):
+    if request.user.role != "admin":
+        return HttpResponseForbidden()
+
+    records = StaffTimeUpdate.objects.select_related("employee").order_by("-updated_at")
+    return render(request, "admin_ot_sac_list.html", {"records": records})
+
+
+@login_required
+def cluster_ot_sac_list(request):
+    if request.user.role != "cluster_manager":
+        return HttpResponseForbidden()
+
+    locations = request.user.assigned_locations.all()
+    records = StaffTimeUpdate.objects.filter(
+        employee__location__in=locations
+    ).select_related("employee").order_by("-updated_at")
+
+    return render(request, "cluster_ot_sac_list.html", {"records": records})
