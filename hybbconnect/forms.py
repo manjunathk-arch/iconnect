@@ -249,13 +249,14 @@ class StaffTimeUpdateForm(forms.ModelForm):
 
         if update_type == "TO":
             if not cleaned.get("ot_hours") or not cleaned.get("ot_date"):
-                raise forms.ValidationError("OT Hours and OT Date are required for TO.")
+                raise forms.DateInput("OT Hours and OT Date are required for TO.")
             cleaned["sac_off_date"] = None
 
         if update_type == "SAC_OFF":
             if not cleaned.get("sac_off_date"):
-                raise forms.ValidationError("SAC OFF date is required.")
+                raise forms.DateInput("SAC OFF date is required.")
             cleaned["ot_hours"] = None
             cleaned["ot_date"] = None
 
         return cleaned
+
