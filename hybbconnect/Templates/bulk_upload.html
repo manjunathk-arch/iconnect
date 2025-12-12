@@ -1,0 +1,17 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+<h1>Bulk Upload Users</h1>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="button button-primary">Upload</button>
+</form>
+
+<h3>CSV Format</h3>
+<pre>
+employee_id,username,email,role,location,password
+1001,john,john@example.com,kitchen_staff,Bangalore,12345
+</pre>
+
+{% endblock %}

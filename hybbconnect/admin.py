@@ -19,28 +19,193 @@ from .models import (
 
 from django.contrib.auth import get_user_model
 from django.utils.html import format_html
+import csv
+from django.shortcuts import render, redirect
+from django.urls import path
+from django.contrib import messages
+from django.contrib.auth.hashers import make_password
+from .forms import UserBulkUploadForm
+from .models import CustomUser
+from django.contrib.auth.admin import UserAdmin
+
+import csv
+import pandas as pd
+from django.contrib import admin, messages
+from django.contrib.auth.admin import UserAdmin
+from django.contrib.auth import get_user_model
+from django.utils.translation import gettext_lazy as _
+from django.shortcuts import redirect, render
+from django.urls import path
+from django.contrib.auth.hashers import make_password
+
+from .models import CustomUser, Location
+from .forms import UserBulkUploadForm
 
 User = get_user_model()
 
 
-# =====================================================================
-# ✅ Custom User Admin
-# =====================================================================
-
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
-    list_display = ("employee_id", "username", "role", "location", "is_active", "is_staff")
+
+    change_list_template = "users_change_list.html"
+
+    list_display = ("employee_id", "username", "role", "location",
+                    "is_active", "is_staff")
     list_filter = ("role", "location", "is_active", "is_staff")
     search_fields = ("employee_id", "username", "email")
     ordering = ("employee_id",)
 
     fieldsets = UserAdmin.fieldsets + (
-        ("Role & Location Details", {"fields": ("employee_id", "role", "location")}),
+        ("Role & Location Details",
+         {"fields": ("employee_id", "role", "location")}),
     )
 
     add_fieldsets = UserAdmin.add_fieldsets + (
-        ("Role & Location Details", {"fields": ("employee_id", "role", "location")}),
+        ("Role & Location Details",
+         {"fields": ("employee_id", "role", "location")}),
     )
+
+    # --------------------------
+    # Custom URL
+    # --------------------------
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "bulk-upload/",
+                self.admin_site.admin_view(self.bulk_upload_view),
+                name="customuser_bulk_upload",
+            ),
+        ]
+        return custom + urls
+
+    # --------------------------
+    # Bulk Upload View
+    # --------------------------
+    def bulk_upload_view(self, request):
+
+        if request.method == "POST":
+            form = UserBulkUploadForm(request.POST, request.FILES)
+
+            if form.is_valid():
+                file = request.FILES["file"]
+                filename = file.name.lower()
+
+                users = []
+
+                # --------------------------------
+                # CSV Upload
+                # --------------------------------
+                if filename.endswith(".csv"):
+                    decoded = file.read().decode("utf-8-sig").splitlines()
+                    reader = csv.DictReader(decoded)
+
+                    # Normalize CSV headers
+                    reader.fieldnames = [
+                        h.strip().lower().replace(" ", "_").replace("\ufeff", "")
+                        for h in reader.fieldnames
+                    ]
+
+                    for row in reader:
+                        users.append(row)
+
+                # --------------------------------
+                # Excel Upload
+                # --------------------------------
+                elif filename.endswith(".xlsx"):
+                    df = pd.read_excel(file)
+
+                    # Normalize Excel headers
+                    df.columns = (
+                        df.columns.str.strip()
+                        .str.lower()
+                        .str.replace(" ", "_")
+                        .str.replace("\ufeff", "")
+                    )
+
+                    users = df.to_dict(orient="records")
+
+                else:
+                    messages.error(request, "Upload only .csv or .xlsx files!")
+                    return redirect("..")
+
+                # --------------------------------
+                # Required Columns
+                # --------------------------------
+                required = ["employee_id", "username",
+                            "role", "location", "password"]
+
+                created_count = 0
+                skipped_count = 0
+
+                for row in users:
+
+                    # Missing required fields
+                    for field in required:
+                        if field not in row or row[field] in [None, ""]:
+                            messages.error(request, f"Missing or empty field: {field}")
+                            return redirect("..")
+
+                    # --------------------------------
+                    # Skip duplicates
+                    # --------------------------------
+                    if CustomUser.objects.filter(username=row["username"]).exists():
+                        skipped_count += 1
+                        messages.warning(request, f"Skipped (username exists): {row['username']}")
+                        continue
+
+                    if CustomUser.objects.filter(employee_id=row["employee_id"]).exists():
+                        skipped_count += 1
+                        messages.warning(
+                            request, f"Skipped (employee ID exists): {row['employee_id']}"
+                        )
+                        continue
+
+                    # --------------------------------
+                    # Get Location object
+                    # --------------------------------
+                    location_value = row["location"].strip()
+
+                    try:
+                        location_obj = Location.objects.get(code=location_value)
+                    except Location.DoesNotExist:
+                        messages.error(
+                            request, f"❌ Location not found: {location_value}"
+                        )
+                        return redirect("..")
+
+                    # --------------------------------
+                    # Create new user
+                    # --------------------------------
+                    CustomUser.objects.create(
+                        employee_id=row["employee_id"],
+                        username=row["username"],
+                        email=row.get("email", ""),
+                        role=row["role"],
+                        location=location_obj,
+                        password=make_password(row["password"]),
+                        is_active=True,   # 👌 Active
+                        is_staff=True,    # 👌 Staff status ON
+                    )
+
+                    created_count += 1
+
+                # --------------------------------
+                # Final messages
+                # --------------------------------
+                messages.success(
+                    request,
+                    f"Upload complete! Created: {created_count}, Skipped: {skipped_count}",
+                )
+                return redirect("..")
+
+        else:
+            form = UserBulkUploadForm()
+
+        return render(request, "bulk_upload.html", {"form": form})
+
+
+
 
 
 # =====================================================================
@@ -348,3 +513,5 @@ class OrderPhotoAdmin(admin.ModelAdmin):
         return "No Image"
 
     image_preview.short_description = "Photo Preview"
+
+

@@ -37,7 +37,7 @@
         <!-- Main Content -->
         <div class="col-md-10 p-0">
             <div class="header d-flex justify-content-between align-items-center p-3 mb-4 bg-white shadow-sm">
-                <h4>Welcome, {{ request.user.username }} 👋</h4>
+                <h4>Welcome, {{ request.user.first_name }} 👋</h4>
                 <div>
                     <strong>Employee ID:</strong> {{ request.user.employee_id|default:"N/A" }} |
                     <strong>Role:</strong> {{ request.user.get_role_display|default:"N/A" }}

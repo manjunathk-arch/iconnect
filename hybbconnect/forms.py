@@ -260,3 +260,8 @@ class StaffTimeUpdateForm(forms.ModelForm):
 
         return cleaned
 
+
+from django import forms
+
+class UserBulkUploadForm(forms.Form):
+    file = forms.FileField(label="Upload CSV File")
