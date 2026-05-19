@@ -46,6 +46,8 @@ import csv
 from .forms import OrderPhotoForm
 from .models import OrderPhoto, Location
 from datetime import datetime
+from .models import Attendance
+
 
 # -----------------------------------------
 # ✅ Correct Category → Owner Mapping
@@ -186,15 +188,29 @@ def staff_dashboard(request):
     # ✅ Fetch all tickets raised by this staff
     my_tickets = Ticket.objects.filter(employee=request.user).order_by("-created_at")
 
+        # 🔥 ADD: Fetch today's attendance
+            # 🔥 Fetch today's attendance (single record)
+    today_attendance = Attendance.objects.filter(
+        user=request.user,
+        date=timezone.localdate()
+    ).first()
+
+    # 🔥 Fetch last 7 days attendance (list)
+    last_7_days_attendance = Attendance.objects.filter(
+        user=request.user,
+        date__gte=timezone.localdate() - timedelta(days=6)
+    ).order_by("-date")
+
     context = {
         "performance_data": performance_data,
         "logs": logs,
         "my_tickets": my_tickets,
         "user_location": request.user.location,
+        "today_attendance": today_attendance,
+        "last_7_days_attendance": last_7_days_attendance,
     }
+
     return render(request, "staff_dashboard.html", context)
-
-
 
 # --------------------------
 # ✅ Staff Confirms Final Closure
@@ -270,6 +286,7 @@ def my_logs_view(request):
 
 
 
+
 # --------------------------
 # ✅ Manager Dashboard
 # --------------------------
@@ -286,6 +303,18 @@ def manager_dashboard(request):
         location=request.user.location.code if request.user.location else "UNKNOWN"
     ).order_by("-created_at")
 
+
+    # 🔥 ADD: Fetch today's attendance
+    today_attendance = Attendance.objects.filter(
+        user=request.user,
+        date=timezone.localdate()
+    ).first()
+
+    last_7_days_attendance = Attendance.objects.filter(
+        user=request.user,
+        date__gte=timezone.localdate() - timedelta(days=6)
+    ).order_by("-date")
+
     form = IConnectForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
         form.save()
@@ -299,6 +328,8 @@ def manager_dashboard(request):
             "tickets": tickets,
             "form": form,
             "staff_logs": staff_logs,  # ✅ send logs to template
+            "today_attendance": today_attendance,
+            "last_7_days_attendance": last_7_days_attendance,
         },
     )
 
@@ -324,49 +355,51 @@ def resolve_ticket(request, ticket_id):
     messages.success(request, f"Ticket #{ticket.ticket_number} marked as Resolved. Awaiting Owner confirmation.")
     return redirect("manager_dashboard")
 
-
-# --------------------------
-# ✅ Cluster Manager Dashboard
-# --------------------------
-from django.db.models import Q
+from datetime import timedelta
+from .models import Attendance
 
 @login_required
 @user_passes_test(lambda u: u.role == "cluster_manager")
 def cluster_dashboard(request):
     user = request.user
 
-    # ✅ Assigned locations for this cluster manager
+    # ✅ Assigned locations
     assigned_locations = []
     if hasattr(user, "cluster_manager_profile"):
         assigned_locations = user.cluster_manager_profile.locations.all()
 
-    # ✅ Kitchen Managers in those locations
     kitchen_managers = CustomUser.objects.filter(
         role="kitchen_manager",
         location__in=assigned_locations
     )
 
-    # ✅ Kitchen Staff in those locations
     kitchen_staff = CustomUser.objects.filter(
         role="kitchen_staff",
         location__in=assigned_locations
     )
 
-    # ✅ iConnect Tickets (from kitchen managers under this cluster OR raised by the cluster manager)
     tickets = Ticket.objects.filter(
         Q(location__in=assigned_locations) | Q(raised_by=user)
     ).order_by("-created_at")
 
-    # ✅ Recent kitchen logs
     kitchen_logs = KitchenLog.objects.filter(
         location__in=[loc.code for loc in assigned_locations]
     ).order_by("-created_at")[:10]
 
-    # ✅ OT / SAC OFF Updates ONLY for staff in allocated locations
     updates = StaffTimeUpdate.objects.filter(
         staff__location__in=assigned_locations
     ).select_related("staff", "staff__location").order_by("-updated_at")
 
+    # 🔥 NEW: Attendance (Last 7 Days for all staff in cluster)
+    last_7_days = timezone.localdate() - timedelta(days=6)
+
+    attendance_records = Attendance.objects.select_related(
+        "user", "user__location"
+    ).filter(
+        user__role="kitchen_staff",
+        user__location__in=assigned_locations,
+        date__gte=last_7_days
+    ).order_by("-date", "user__username")
 
     return render(request, "cluster_dashboard.html", {
         "assigned_locations": assigned_locations,
@@ -374,7 +407,11 @@ def cluster_dashboard(request):
         "kitchen_staff": kitchen_staff,
         "kitchen_logs": kitchen_logs,
         "tickets": tickets,
+
+        # 🔥 ADD
+        "attendance_records": attendance_records,
     })
+
 # --------------------------
 # ✅ Owner Dashboard (Upgraded + Auto Close Support)
 # --------------------------
@@ -1552,3 +1589,89 @@ def export_staff_updates_csv(request):
         ])
 
     return response
+
+
+
+@login_required
+def punch_in(request):
+    user = request.user
+
+    # Only Kitchen Staff & Kitchen Manager
+    if not (is_kitchen_staff(user) or is_kitchen_manager(user)):
+        messages.error(request, "Only kitchen staff or kitchen managers can punch in.")
+        return redirect("dashboard")
+
+    today = timezone.localdate()
+
+    attendance, _ = Attendance.objects.get_or_create(
+        user=user,
+        date=today
+    )
+
+    if attendance.punch_in:
+        messages.warning(request, "You have already punched in today.")
+    else:
+        attendance.punch_in = timezone.now()
+        attendance.save()
+        messages.success(request, "✅ Punch in recorded successfully.")
+
+    return redirect("dashboard")
+
+
+@login_required
+def punch_out(request):
+    user = request.user
+
+    if not (is_kitchen_staff(user) or is_kitchen_manager(user)):
+        messages.error(request, "Only kitchen staff or kitchen managers can punch out.")
+        return redirect("dashboard")
+
+    today = timezone.localdate()
+
+    try:
+        attendance = Attendance.objects.get(user=user, date=today)
+    except Attendance.DoesNotExist:
+        messages.error(request, "Please punch in before punching out.")
+        return redirect("dashboard")
+
+    if attendance.punch_out:
+        messages.warning(request, "You have already punched out today.")
+    elif not attendance.punch_in:
+        messages.error(request, "Punch in is required before punch out.")
+    else:
+        attendance.punch_out = timezone.now()
+        attendance.save()
+        messages.success(request, "✅ Punch out recorded successfully.")
+
+    return redirect("dashboard")
+
+
+
+from datetime import timedelta
+from django.utils import timezone
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.shortcuts import render
+
+@login_required
+@user_passes_test(lambda u: u.role == "cluster_manager")
+def cluster_attendance_report(request):
+    user = request.user
+
+    assigned_locations = []
+    if hasattr(user, "cluster_manager_profile"):
+        assigned_locations = user.cluster_manager_profile.locations.all()
+
+    last_7_days = timezone.localdate() - timedelta(days=6)
+
+    attendance_records = Attendance.objects.select_related(
+        "user", "user__location"
+    ).filter(
+        user__role="kitchen_staff",
+        user__location__in=assigned_locations,
+        date__gte=last_7_days
+    ).order_by("date", "user__username")
+
+    return render(request, "cluster_attendance_report.html", {
+        "attendance_records": attendance_records,
+        "assigned_locations": assigned_locations,
+    })

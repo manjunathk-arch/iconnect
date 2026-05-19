@@ -22,6 +22,7 @@ from django.conf.urls.static import static
 
 
 urlpatterns = [
+    path('', lambda request: redirect('login')),
     path("",include('hybbconnect.urls')),
     path("admin/", admin.site.urls),
 ]

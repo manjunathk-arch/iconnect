@@ -36,3 +36,6 @@ def get_owner_for_category(category_name):
     return owner
 
 
+
+def is_kitchen_staff_or_manager(user):
+    return user.role in ("kitchen_staff", "kitchen_manager")

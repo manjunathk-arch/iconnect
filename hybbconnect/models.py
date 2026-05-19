@@ -277,3 +277,30 @@ class StaffTimeUpdate(models.Model):
 
     def __str__(self):
         return f"{self.staff} - {self.update_type}"
+
+
+
+# models.py
+from django.utils import timezone
+from datetime import timedelta
+
+class Attendance(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="attendance_records"
+    )
+    date = models.DateField(default=timezone.localdate)
+    punch_in = models.DateTimeField(null=True, blank=True)
+    punch_out = models.DateTimeField(null=True, blank=True)
+
+    working_hours = models.DurationField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ("user", "date")
+        ordering = ["-date"]
+
+    def save(self, *args, **kwargs):
+        if self.punch_in and self.punch_out:
+            self.working_hours = self.punch_out - self.punch_in
+        super().save(*args, **kwargs)

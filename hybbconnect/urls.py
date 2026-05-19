@@ -81,8 +81,9 @@ urlpatterns = [
     path("cluster/ot-sac-list/", views.cluster_ot_sac_list, name="cluster_ot_sac_list"),
     path('export/staff-updates/', views.export_staff_updates_csv, name='export_staff_updates_csv'),
 
-
-
+    path("attendance/punch-in/", views.punch_in, name="punch_in"),
+    path("attendance/punch-out/", views.punch_out, name="punch_out"),
+    path("cluster/attendance-report/",views.cluster_attendance_report,name="cluster_attendance_report"),
 
     
 ]

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Cluster Attendance Report{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>🕒 Attendance Report – Last 7 Days</h4>
+        <a href="{% url 'cluster_dashboard' %}" class="btn btn-secondary btn-sm">
+            ← Back to Dashboard
+        </a>
+    </div>
+
+    <div class="card p-3">
+        <div class="table-responsive">
+            <table class="table table-bordered table-sm text-center align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Employee</th>
+                        <th>Employee ID</th>
+                        <th>Location</th>
+                        <th>Date</th>
+                        <th>Punch In</th>
+                        <th>Punch Out</th>
+                        <th>Working Hours</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for att in attendance_records %}
+                    <tr>
+                        <td>{{ att.user.username }}</td>
+                        <td>{{ att.user.employee_id }}</td>
+                        <td>{{ att.user.location }}</td>
+                        <td>{{ att.date|date:"d M Y" }}</td>
+                        <td>{{ att.punch_in|time:"H:i"|default:"-" }}</td>
+                        <td>{{ att.punch_out|time:"H:i"|default:"-" }}</td>
+                        <td>
+                            {% if att.working_hours %}
+                                {{ att.working_hours }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7">No attendance records found</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
