@@ -1,7 +1,7 @@
 from django import forms
 from .models import (
-    Location, Ticket, KitchenLog, StaffPerformance,
-    CustomUser, OrderPhoto
+    Location, Ticket, KitchenLog, StaffPerformance, QualityFeedback,
+    CustomUser, OrderPhoto 
 )
 
 
@@ -21,6 +21,7 @@ class KitchenPlayerForm(forms.ModelForm):
         ('Request a Call Back', 'Request a Call Back'),
         ('Co-Worker Issue', 'Co-Worker Issue'),
         ('Salary Message not received', 'Salary Message not received'),
+        
     ]
 
     concern = forms.ChoiceField(
@@ -92,6 +93,56 @@ class KitchenLogForm(forms.ModelForm):
 
         self.fields["staff"].empty_label = "Select staff member"
 
+# ======================================================
+# 3️⃣ QUALITY FEEDBACK FORM
+# ======================================================
+
+class QualityFeedbackForm(forms.ModelForm):
+    class Meta:
+        model = QualityFeedback
+        fields = ["staff", "category", "remarks", "feedback_date"]
+        widgets = {
+            "feedback_date": forms.DateInput(
+                attrs={
+                    "type": "date",
+                    "class": "form-control"
+                }
+            ),
+            "remarks": forms.Textarea(
+                attrs={
+                    "class": "form-control",
+                    "rows": 3
+                }
+            ),
+        }
+
+    def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+
+        self.fields["staff"].queryset = CustomUser.objects.none()
+
+        # Kitchen Manager → Only staff in own location
+        if user and user.role == "kitchen_manager" and user.location:
+            self.fields["staff"].queryset = CustomUser.objects.filter(
+                role="kitchen_staff",
+                location=user.location
+            )
+
+        # Cluster Manager → Staff in assigned locations
+        elif (
+            user
+            and user.role == "cluster_manager"
+            and hasattr(user, "cluster_manager_profile")
+        ):
+            assigned_locations = user.cluster_manager_profile.locations.all()
+
+            self.fields["staff"].queryset = CustomUser.objects.filter(
+                role="kitchen_staff",
+                location__in=assigned_locations
+            )
+
+        self.fields["staff"].empty_label = "Select Staff Member"
 
 # ======================================================
 # 3️⃣ ICONNECT FORM – KITCHEN MANAGER / HR

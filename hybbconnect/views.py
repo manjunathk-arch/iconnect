@@ -48,6 +48,13 @@ from .models import OrderPhoto, Location
 from datetime import datetime
 from .models import Attendance
 
+from django.shortcuts import get_object_or_404, render, redirect
+from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.utils import timezone
+from .forms import QualityFeedbackForm
+from .models import QualityFeedback
+
 
 # -----------------------------------------
 # ✅ Correct Category → Owner Mapping
@@ -74,6 +81,7 @@ CATEGORY_OWNER_MAP = {
     "Co-Worker Issue": "E013",
     "Request a call Back": "E013",
     "PF Related Issues": "E013",
+    "Salary Hold": "E013",
 }
 
 
@@ -760,6 +768,133 @@ def raise_staff_log(request):
         "staff_list": staff_list
     })
 
+
+@login_required
+@user_passes_test(lambda u: u.role in ["kitchen_manager", "cluster_manager"])
+def raise_quality_feedback(request):
+    user = request.user
+
+    form = QualityFeedbackForm(request.POST or None, user=user)
+
+    # Staff dropdown
+    if user.role == "kitchen_manager" and user.location:
+        staff_list = CustomUser.objects.filter(
+            role="kitchen_staff",
+            location=user.location
+        )
+
+    elif user.role == "cluster_manager" and hasattr(user, "cluster_manager_profile"):
+        assigned_locations = user.cluster_manager_profile.locations.all()
+
+        staff_list = CustomUser.objects.filter(
+            role="kitchen_staff",
+            location__in=assigned_locations
+        )
+
+    else:
+        staff_list = CustomUser.objects.filter(role="kitchen_staff")
+
+    if request.method == "POST" and form.is_valid():
+        feedback = form.save(commit=False)
+
+        # Save location
+        if user.role == "kitchen_manager":
+            feedback.location = (
+                user.location.code if user.location else "UNKNOWN"
+            )
+
+        elif user.role == "cluster_manager":
+            if feedback.staff and feedback.staff.location:
+                feedback.location = feedback.staff.location.code
+            else:
+                feedback.location = "UNKNOWN"
+
+        # Auto-fill employee details
+        if feedback.staff:
+            feedback.emp_id = feedback.staff.employee_id
+            feedback.emp_name = feedback.staff.username
+
+        feedback.save()
+
+        messages.success(request, "✅ Quality Feedback recorded successfully!")
+
+        if user.role == "cluster_manager":
+            return redirect("cluster_dashboard")
+
+        return redirect("manager_dashboard")
+
+    return render(
+        request,
+        "raise_quality_feedback.html",
+        {
+            "form": form,
+            "staff_list": staff_list,
+        },
+    )
+
+
+@login_required
+@user_passes_test(lambda u: u.role in ["kitchen_manager", "cluster_manager"])
+def raise_quality_feedback(request):
+    user = request.user
+
+    form = QualityFeedbackForm(request.POST or None, user=user)
+
+    # Staff dropdown
+    if user.role == "kitchen_manager" and user.location:
+        staff_list = CustomUser.objects.filter(
+            role="kitchen_staff",
+            location=user.location
+        )
+
+    elif user.role == "cluster_manager" and hasattr(user, "cluster_manager_profile"):
+        assigned_locations = user.cluster_manager_profile.locations.all()
+
+        staff_list = CustomUser.objects.filter(
+            role="kitchen_staff",
+            location__in=assigned_locations
+        )
+
+    else:
+        staff_list = CustomUser.objects.filter(role="kitchen_staff")
+
+    if request.method == "POST" and form.is_valid():
+        feedback = form.save(commit=False)
+
+        # Save location
+        if user.role == "kitchen_manager":
+            feedback.location = (
+                user.location.code if user.location else "UNKNOWN"
+            )
+
+        elif user.role == "cluster_manager":
+            if feedback.staff and feedback.staff.location:
+                feedback.location = feedback.staff.location.code
+            else:
+                feedback.location = "UNKNOWN"
+
+        # Auto-fill employee details
+        if feedback.staff:
+            feedback.emp_id = feedback.staff.employee_id
+            feedback.emp_name = feedback.staff.username
+
+        feedback.save()
+
+        messages.success(request, "✅ Quality Feedback recorded successfully!")
+
+        if user.role == "cluster_manager":
+            return redirect("cluster_dashboard")
+
+        return redirect("manager_dashboard")
+
+    return render(
+        request,
+        "raise_quality_feedback.html",
+        {
+            "form": form,
+            "staff_list": staff_list,
+        },
+    )
 
 @login_required
 @user_passes_test(lambda u: u.role == "kitchen_staff")
@@ -1675,3 +1810,437 @@ def cluster_attendance_report(request):
         "attendance_records": attendance_records,
         "assigned_locations": assigned_locations,
     })
+
+# ======================================================
+# QUALITY FEEDBACK
+# ======================================================
+
+
+@login_required
+def raise_quality_feedback(request):
+
+    user = request.user
+
+    # Only KM and CM can raise Quality Feedback
+    if user.role not in ["kitchen_manager", "cluster_manager"]:
+        messages.error(
+            request,
+            "You are not authorized to raise Quality Feedback."
+        )
+        return redirect("dashboard")
+
+    if request.method == "POST":
+
+        form = QualityFeedbackForm(
+            request.POST,
+            user=user
+        )
+
+        if form.is_valid():
+
+            feedback = form.save(commit=False)
+
+            # Get selected staff
+            staff = feedback.staff
+
+            if not staff:
+                messages.error(
+                    request,
+                    "Please select a staff member."
+                )
+                return render(
+                    request,
+                    "raise_quality_feedback.html",
+                    {"form": form}
+                )
+
+            # ------------------------------------------
+            # Security check
+            # ------------------------------------------
+
+            if user.role == "kitchen_manager":
+
+                if staff.location != user.location:
+                    messages.error(
+                        request,
+                        "You cannot raise feedback for staff from another location."
+                    )
+                    return redirect(
+                        "raise_quality_feedback"
+                    )
+
+            elif user.role == "cluster_manager":
+
+                assigned_locations = (
+                    user.cluster_manager_profile
+                    .locations.all()
+                )
+
+                if staff.location not in assigned_locations:
+                    messages.error(
+                        request,
+                        "You cannot raise feedback for this staff member."
+                    )
+                    return redirect(
+                        "raise_quality_feedback"
+                    )
+
+            # ------------------------------------------
+            # Store staff information
+            # ------------------------------------------
+
+            feedback.emp_id = staff.employee_id
+            feedback.emp_name = staff.username
+
+            if staff.location:
+                feedback.location = staff.location.code
+            else:
+                feedback.location = "UNKNOWN"
+
+            feedback.save()
+
+            messages.success(
+                request,
+                "Quality Feedback raised successfully."
+            )
+
+            return redirect(
+                "view_quality_feedback"
+            )
+
+    else:
+
+        form = QualityFeedbackForm(
+            user=user
+        )
+
+    return render(
+        request,
+        "raise_quality_feedback.html",
+        {
+            "form": form
+        }
+    )
+
+
+# ======================================================
+# VIEW QUALITY FEEDBACK
+# ======================================================
+
+
+@login_required
+def view_quality_feedback(request):
+
+    user = request.user
+
+    # --------------------------------------------------
+    # Kitchen Staff
+    # Only their own feedback
+    # --------------------------------------------------
+
+    if user.role == "kitchen_staff":
+
+        feedbacks = QualityFeedback.objects.filter(
+            staff=user
+        ).order_by(
+            "-feedback_date",
+            "-created_at"
+        )
+
+    # --------------------------------------------------
+    # Kitchen Manager
+    # Only their location
+    # --------------------------------------------------
+
+    elif user.role == "kitchen_manager":
+
+        if user.location:
+
+            feedbacks = QualityFeedback.objects.filter(
+                location=user.location.code
+            ).order_by(
+                "-feedback_date",
+                "-created_at"
+            )
+
+        else:
+
+            feedbacks = QualityFeedback.objects.none()
+
+    # --------------------------------------------------
+    # Cluster Manager
+    # Assigned locations
+    # --------------------------------------------------
+
+    elif user.role == "cluster_manager":
+
+        if hasattr(
+            user,
+            "cluster_manager_profile"
+        ):
+
+            assigned_locations = (
+                user.cluster_manager_profile
+                .locations
+                .values_list(
+                    "code",
+                    flat=True
+                )
+            )
+
+            feedbacks = QualityFeedback.objects.filter(
+                location__in=assigned_locations
+            ).order_by(
+                "-feedback_date",
+                "-created_at"
+            )
+
+        else:
+
+            feedbacks = QualityFeedback.objects.none()
+
+    # --------------------------------------------------
+    # Admin / Owner
+    # See everything
+    # --------------------------------------------------
+
+    elif user.role in ["admin", "owner"]:
+
+        feedbacks = QualityFeedback.objects.all().order_by(
+            "-feedback_date",
+            "-created_at"
+        )
+
+    # --------------------------------------------------
+    # Other users
+    # --------------------------------------------------
+
+    else:
+
+        feedbacks = QualityFeedback.objects.none()
+
+    # ==================================================
+    # FILTERS
+    # ==================================================
+
+    employee_id = request.GET.get(
+        "employee_id",
+        ""
+    ).strip()
+
+    location = request.GET.get(
+        "location",
+        ""
+    ).strip()
+
+    # Employee ID filter
+    if employee_id:
+
+        feedbacks = feedbacks.filter(
+            emp_id__icontains=employee_id
+        )
+
+    # Location filter
+    if location:
+
+        feedbacks = feedbacks.filter(
+            location=location
+        )
+
+    # Locations for dropdown
+    if user.role in ["admin", "owner"]:
+
+        locations = (
+            QualityFeedback.objects
+            .exclude(location__isnull=True)
+            .exclude(location="")
+            .values_list(
+                "location",
+                flat=True
+            )
+            .distinct()
+            .order_by("location")
+        )
+
+    elif user.role == "kitchen_manager":
+
+        if user.location:
+            locations = [user.location.code]
+        else:
+            locations = []
+
+    elif user.role == "cluster_manager":
+
+        if hasattr(
+            user,
+            "cluster_manager_profile"
+        ):
+
+            locations = (
+                user.cluster_manager_profile
+                .locations
+                .values_list(
+                    "code",
+                    flat=True
+                )
+                .order_by("code")
+            )
+
+        else:
+
+            locations = []
+
+    else:
+
+        locations = []
+
+    return render(
+        request,
+        "view_quality_feedback.html",
+        {
+            "feedbacks": feedbacks,
+            "locations": locations,
+            "selected_employee_id": employee_id,
+            "selected_location": location,
+        }
+    )
+
+
+# ======================================================
+# ACKNOWLEDGE QUALITY FEEDBACK
+# ======================================================
+
+
+@login_required
+def acknowledge_quality_feedback(
+    request,
+    feedback_id
+):
+
+    feedback = get_object_or_404(
+        QualityFeedback,
+        id=feedback_id
+    )
+
+    # Only assigned staff can acknowledge
+    if feedback.staff != request.user:
+
+        messages.error(
+            request,
+            "You are not authorized to acknowledge this feedback."
+        )
+
+        return redirect(
+            "view_quality_feedback"
+        )
+
+    # Prevent duplicate acknowledgement
+    if not feedback.is_acknowledged:
+
+        feedback.is_acknowledged = True
+
+        feedback.acknowledged_at = timezone.now()
+
+        feedback.save(
+            update_fields=[
+                "is_acknowledged",
+                "acknowledged_at",
+            ]
+        )
+
+        messages.success(
+            request,
+            "Quality Feedback acknowledged successfully."
+        )
+
+    else:
+
+        messages.info(
+            request,
+            "This feedback has already been acknowledged."
+        )
+
+    return redirect(
+        "view_quality_feedback"
+    )
+
+
+# ======================================================
+# EXPORT QUALITY FEEDBACK CSV
+# ======================================================
+
+
+@login_required
+def export_quality_feedback_csv(request):
+
+    # Only Admin can download
+    if request.user.role != "admin":
+
+        messages.error(
+            request,
+            "You are not authorized to download Quality Feedback."
+        )
+
+        return redirect(
+            "view_quality_feedback"
+        )
+
+    feedbacks = QualityFeedback.objects.all().order_by(
+        "-feedback_date",
+        "-created_at"
+    )
+
+    response = HttpResponse(
+        content_type="text/csv"
+    )
+
+    response[
+        "Content-Disposition"
+    ] = (
+        'attachment; filename="quality_feedback.csv"'
+    )
+
+    writer = csv.writer(response)
+
+    # CSV Header
+    writer.writerow([
+        "Feedback Date",
+        "Employee ID",
+        "Employee Name",
+        "Location",
+        "Category",
+        "Remarks",
+        "Acknowledged",
+        "Acknowledged At",
+        "Created At",
+    ])
+
+    # CSV Data
+    for feedback in feedbacks:
+
+        writer.writerow([
+            feedback.feedback_date,
+            feedback.emp_id or "",
+            feedback.emp_name or "",
+            feedback.location or "",
+            feedback.category,
+            feedback.remarks or "",
+
+            "Yes"
+            if feedback.is_acknowledged
+            else "No",
+
+            feedback.acknowledged_at.strftime(
+                "%d-%m-%Y %H:%M"
+            )
+            if feedback.acknowledged_at
+            else "",
+
+            feedback.created_at.strftime(
+                "%d-%m-%Y %H:%M"
+            )
+            if feedback.created_at
+            else "",
+        ])
+
+    return response

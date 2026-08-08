@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-danger text-white">
+            <h4 class="mb-0">Quality Feedback</h4>
+        </div>
+
+        <div class="card-body">
+
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-success">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="POST">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label">Staff Member</label>
+                    {{ form.staff }}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Category</label>
+                    {{ form.category }}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Remarks</label>
+                    {{ form.remarks }}
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Feedback Date</label>
+                    {{ form.feedback_date }}
+                </div>
+
+                <button type="submit" class="btn btn-success">
+                    Submit Feedback
+                </button>
+
+                {% if request.user.role == "cluster_manager" %}
+                    <a href="{% url 'cluster_dashboard' %}" class="btn btn-secondary">
+                        Cancel
+                    </a>
+                {% else %}
+                    <a href="{% url 'manager_dashboard' %}" class="btn btn-secondary">
+                        Cancel
+                    </a>
+                {% endif %}
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

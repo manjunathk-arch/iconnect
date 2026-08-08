@@ -35,6 +35,12 @@ class CustomUser(AbstractUser):
     )
     location = models.ForeignKey('Location', on_delete=models.SET_NULL, null=True, blank=True)
 
+    # Django's createsuperuser command prompts for fields listed here.  Both
+    # fields are required by this model, so including them prevents it from
+    # trying to save empty values (which violates the unique employee_id
+    # constraint once another empty value already exists).
+    REQUIRED_FIELDS = ["email", "employee_id", "role"]
+
     def __str__(self):
         return self.username or self.email or self.employee_id
 
@@ -147,6 +153,7 @@ class KitchenLog(models.Model):
         ("Behaviour Issue", "Behaviour Issue"),
         ("Grooming", "Grooming"),
         ("Assigned Task Not Completed", "Assigned Task Not Completed"),
+        
     ]
 
     staff = models.ForeignKey(
@@ -304,3 +311,49 @@ class Attendance(models.Model):
         if self.punch_in and self.punch_out:
             self.working_hours = self.punch_out - self.punch_in
         super().save(*args, **kwargs)
+
+
+
+# ---------------------------------------------------------
+# 6️⃣ QUALITY FEEDBACK
+# ---------------------------------------------------------
+class QualityFeedback(models.Model):
+    CATEGORY_CHOICES = [
+        ("KOT Marking", "KOT Marking"),
+        ("Follow SOP", "Follow SOP"),
+        ("Quality Check", "Quality Check"),
+        ("Correct Portioning", "Correct Portioning"),
+        ("Order Verification before packing", "Order Verification before packing"),
+        ("Use Dossier", "Use Dossier"),
+        ("Follow dispatch checklist", "Follow dispatch checklist"),
+        ("Photo Adherence", "Photo Adherence"),
+        ("Productivity", "Productivity"),
+        ("Call Cust or Thank u notes", "Call Cust or Thank u notes"),
+    ]
+
+    staff = models.ForeignKey(
+        "CustomUser",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="quality_feedbacks",
+        limit_choices_to={"role": "kitchen_staff"},
+    )
+
+    emp_id = models.CharField(max_length=50, blank=True, null=True)
+    emp_name = models.CharField(max_length=100, blank=True, null=True)
+    location = models.CharField(max_length=50, default="UNKNOWN")
+
+    category = models.CharField(max_length=100, choices=CATEGORY_CHOICES)
+    remarks = models.TextField(blank=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    feedback_date = models.DateField(default=timezone.now, verbose_name="Feedback Date")
+
+    is_acknowledged = models.BooleanField(default=False)
+    acknowledged_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        if self.staff:
+            return f"{self.staff.username} - {self.category}"
+        return f"{self.emp_name or 'Unknown'} ({self.emp_id or 'N/A'}) - {self.category}"

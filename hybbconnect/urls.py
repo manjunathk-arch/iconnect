@@ -85,6 +85,16 @@ urlpatterns = [
     path("attendance/punch-out/", views.punch_out, name="punch_out"),
     path("cluster/attendance-report/",views.cluster_attendance_report,name="cluster_attendance_report"),
 
+
+
+    # ------------------------
+# Quality Feedback
+# ------------------------
+    path("raise_quality_feedback/",views.raise_quality_feedback,name="raise_quality_feedback",),
+    path("view_quality_feedback/",views.view_quality_feedback,name="view_quality_feedback",),
+    path("acknowledge_quality_feedback/<int:feedback_id>/",views.acknowledge_quality_feedback,name="acknowledge_quality_feedback",),
+    path("export/quality-feedback/",views.export_quality_feedback_csv,name="export_quality_feedback_csv",),
+
     
 ]
 
