@@ -9,6 +9,7 @@ db.sqlite3
 media/
 order_photos/
 backup_tickets.json
+data_backup.json
 
 # Environment
 .env
