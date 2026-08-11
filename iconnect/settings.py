@@ -143,7 +143,7 @@ TEMPLATES = [
         # Your existing project uses:
         # BASE_DIR / "Templates"
         "DIRS": [
-            BASE_DIR / "Templates"
+            BASE_DIR / "hybbconnect" / "Templates"
         ],
 
         "APP_DIRS": True,
