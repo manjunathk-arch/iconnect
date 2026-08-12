@@ -20,6 +20,7 @@ from .models import (
 from django.contrib.auth import get_user_model
 from django.utils.html import format_html
 import csv
+import io
 from django.shortcuts import render, redirect
 from django.urls import path
 from django.contrib import messages
@@ -27,6 +28,8 @@ from django.contrib.auth.hashers import make_password
 from .forms import UserBulkUploadForm
 from .models import CustomUser
 from django.contrib.auth.admin import UserAdmin
+from openpyxl import load_workbook
+from django.db import transaction
 
 import csv
 import pandas as pd
@@ -80,131 +83,461 @@ class CustomUserAdmin(UserAdmin):
         return custom + urls
 
     # --------------------------
-    # Bulk Upload View
-    # --------------------------
+# Bulk Upload View
+# Memory-Optimized Version
+# --------------------------
     def bulk_upload_view(self, request):
 
+        BATCH_SIZE = 500
+
         if request.method == "POST":
+
             form = UserBulkUploadForm(request.POST, request.FILES)
 
-            if form.is_valid():
-                file = request.FILES["file"]
-                filename = file.name.lower()
+            if not form.is_valid():
+                return render(
+                    request,
+                    "bulk_upload.html",
+                    {"form": form}
+                )
 
-                users = []
+            file = request.FILES["file"]
+            filename = file.name.lower()
 
-                # --------------------------------
-                # CSV Upload
-                # --------------------------------
-                if filename.endswith(".csv"):
-                    decoded = file.read().decode("utf-8-sig").splitlines()
-                    reader = csv.DictReader(decoded)
+            required = [
+                "employee_id",
+                "username",
+                "role",
+                "location",
+                "password",
+            ]
 
-                    # Normalize CSV headers
-                    reader.fieldnames = [
-                        h.strip().lower().replace(" ", "_").replace("\ufeff", "")
-                        for h in reader.fieldnames
-                    ]
+            created_count = 0
+            skipped_count = 0
 
-                    for row in reader:
-                        users.append(row)
+            # -------------------------------------------------
+            # Load locations once
+            # -------------------------------------------------
+            locations = {
+                str(location.code).strip(): location
+                for location in Location.objects.all()
+            }
 
-                # --------------------------------
-                # Excel Upload
-                # --------------------------------
-                elif filename.endswith(".xlsx"):
-                    df = pd.read_excel(file)
+            # -------------------------------------------------
+            # Track duplicates inside the uploaded file
+            # -------------------------------------------------
+            uploaded_usernames = set()
+            uploaded_employee_ids = set()
 
-                    # Normalize Excel headers
-                    df.columns = (
-                        df.columns.str.strip()
-                        .str.lower()
-                        .str.replace(" ", "_")
-                        .str.replace("\ufeff", "")
+            # -------------------------------------------------
+            # Process one batch at a time
+            # -------------------------------------------------
+            def process_batch(rows):
+
+                nonlocal created_count, skipped_count
+
+                if not rows:
+                    return
+
+                # ---------------------------------------------
+                # Validate required columns
+                # ---------------------------------------------
+                for row_number, row in rows:
+
+                    for field in required:
+
+                        value = row.get(field)
+
+                        if value is None or str(value).strip() == "":
+                            messages.error(
+                                request,
+                                f"Row {row_number}: Missing or empty field: {field}"
+                            )
+                            raise ValueError("Invalid required field")
+
+                # ---------------------------------------------
+                # Get usernames / employee IDs in this batch
+                # ---------------------------------------------
+                usernames = set()
+                employee_ids = set()
+
+                for row_number, row in rows:
+
+                    username = str(row["username"]).strip()
+                    employee_id = str(row["employee_id"]).strip()
+
+                    usernames.add(username)
+                    employee_ids.add(employee_id)
+
+                # ---------------------------------------------
+                # Existing database records
+                # ---------------------------------------------
+                existing_usernames = set(
+                    CustomUser.objects.filter(
+                        username__in=usernames
+                    ).values_list(
+                        "username",
+                        flat=True
+                    )
+                )
+
+                existing_employee_ids = set(
+                    CustomUser.objects.filter(
+                        employee_id__in=employee_ids
+                    ).values_list(
+                        "employee_id",
+                        flat=True
+                    )
+                )
+
+                # ---------------------------------------------
+                # Prepare users for bulk insert
+                # ---------------------------------------------
+                users_to_create = []
+
+                for row_number, row in rows:
+
+                    username = str(row["username"]).strip()
+                    employee_id = str(row["employee_id"]).strip()
+                    role = str(row["role"]).strip()
+                    location_value = str(row["location"]).strip()
+                    password = str(row["password"]).strip()
+
+                    # -----------------------------------------
+                    # Duplicate username
+                    # -----------------------------------------
+                    if (
+                        username in existing_usernames
+                        or username in uploaded_usernames
+                    ):
+
+                        skipped_count += 1
+
+                        messages.warning(
+                            request,
+                            f"Row {row_number}: "
+                            f"Skipped (username exists): {username}"
+                        )
+
+                        continue
+
+                    # -----------------------------------------
+                    # Duplicate employee ID
+                    # -----------------------------------------
+                    if (
+                        employee_id in existing_employee_ids
+                        or employee_id in uploaded_employee_ids
+                    ):
+
+                        skipped_count += 1
+
+                        messages.warning(
+                            request,
+                            f"Row {row_number}: "
+                            f"Skipped (employee ID exists): {employee_id}"
+                        )
+
+                        continue
+
+                    # -----------------------------------------
+                    # Check location
+                    # -----------------------------------------
+                    location_obj = locations.get(location_value)
+
+                    if not location_obj:
+
+                        messages.error(
+                            request,
+                            f"Row {row_number}: "
+                            f"❌ Location not found: {location_value}"
+                        )
+
+                        raise ValueError(
+                            f"Location not found: {location_value}"
+                        )
+
+                    # -----------------------------------------
+                    # Mark as seen
+                    # -----------------------------------------
+                    uploaded_usernames.add(username)
+                    uploaded_employee_ids.add(employee_id)
+
+                    # -----------------------------------------
+                    # Create user object
+                    # -----------------------------------------
+                    users_to_create.append(
+                        CustomUser(
+                            employee_id=employee_id,
+                            username=username,
+                            email=str(row.get("email") or "").strip(),
+                            role=role,
+                            location=location_obj,
+                            password=make_password(password),
+                            is_active=True,
+                            is_staff=True,
+                        )
                     )
 
-                    users = df.to_dict(orient="records")
+                # ---------------------------------------------
+                # Bulk insert
+                # ---------------------------------------------
+                if users_to_create:
 
-                else:
-                    messages.error(request, "Upload only .csv or .xlsx files!")
-                    return redirect("..")
+                    with transaction.atomic():
 
-                # --------------------------------
-                # Required Columns
-                # --------------------------------
-                required = ["employee_id", "username",
-                            "role", "location", "password"]
-
-                created_count = 0
-                skipped_count = 0
-
-                for row in users:
-
-                    # Missing required fields
-                    for field in required:
-                        if field not in row or row[field] in [None, ""]:
-                            messages.error(request, f"Missing or empty field: {field}")
-                            return redirect("..")
-
-                    # --------------------------------
-                    # Skip duplicates
-                    # --------------------------------
-                    if CustomUser.objects.filter(username=row["username"]).exists():
-                        skipped_count += 1
-                        messages.warning(request, f"Skipped (username exists): {row['username']}")
-                        continue
-
-                    if CustomUser.objects.filter(employee_id=row["employee_id"]).exists():
-                        skipped_count += 1
-                        messages.warning(
-                            request, f"Skipped (employee ID exists): {row['employee_id']}"
+                        CustomUser.objects.bulk_create(
+                            users_to_create,
+                            batch_size=BATCH_SIZE
                         )
-                        continue
 
-                    # --------------------------------
-                    # Get Location object
-                    # --------------------------------
-                    location_value = row["location"].strip()
+                    created_count += len(users_to_create)
 
+            # =================================================
+            # CSV
+            # =================================================
+            if filename.endswith(".csv"):
+
+                try:
+
+                    text_file = io.TextIOWrapper(
+                        file.file,
+                        encoding="utf-8-sig",
+                        newline=""
+                    )
+
+                    reader = csv.reader(text_file)
+
+                    # -----------------------------------------
+                    # Header
+                    # -----------------------------------------
                     try:
-                        location_obj = Location.objects.get(code=location_value)
-                    except Location.DoesNotExist:
+                        headers = next(reader)
+                    except StopIteration:
                         messages.error(
-                            request, f"❌ Location not found: {location_value}"
+                            request,
+                            "CSV file is empty."
                         )
                         return redirect("..")
 
-                    # --------------------------------
-                    # Create new user
-                    # --------------------------------
-                    CustomUser.objects.create(
-                        employee_id=row["employee_id"],
-                        username=row["username"],
-                        email=row.get("email", ""),
-                        role=row["role"],
-                        location=location_obj,
-                        password=make_password(row["password"]),
-                        is_active=True,   # 👌 Active
-                        is_staff=True,    # 👌 Staff status ON
+                    headers = [
+                        str(header)
+                        .strip()
+                        .lower()
+                        .replace(" ", "_")
+                        .replace("\ufeff", "")
+                        for header in headers
+                    ]
+
+                    # -----------------------------------------
+                    # Check required columns
+                    # -----------------------------------------
+                    missing_columns = [
+                        field
+                        for field in required
+                        if field not in headers
+                    ]
+
+                    if missing_columns:
+
+                        messages.error(
+                            request,
+                            "Missing required columns: "
+                            + ", ".join(missing_columns)
+                        )
+
+                        return redirect("..")
+
+                    batch = []
+
+                    for row_number, values in enumerate(reader, start=2):
+
+                        row = dict(
+                            zip(headers, values)
+                        )
+
+                        batch.append(
+                            (row_number, row)
+                        )
+
+                        if len(batch) >= BATCH_SIZE:
+
+                            process_batch(batch)
+
+                            batch.clear()
+
+                    # -----------------------------------------
+                    # Process remaining rows
+                    # -----------------------------------------
+                    if batch:
+                        process_batch(batch)
+
+                    text_file.detach()
+
+                except UnicodeDecodeError:
+
+                    messages.error(
+                        request,
+                        "CSV must be saved as UTF-8 encoding."
                     )
 
-                    created_count += 1
+                    return redirect("..")
 
-                # --------------------------------
-                # Final messages
-                # --------------------------------
-                messages.success(
+                except ValueError:
+
+                    return redirect("..")
+
+            # =================================================
+            # Excel XLSX
+            # =================================================
+            elif filename.endswith(".xlsx"):
+
+                try:
+
+                    workbook = load_workbook(
+                        file,
+                        read_only=True,
+                        data_only=True
+                    )
+
+                    worksheet = workbook.active
+
+                    rows_iterator = worksheet.iter_rows(
+                        values_only=True
+                    )
+
+                    # -----------------------------------------
+                    # Header
+                    # -----------------------------------------
+                    try:
+                        headers = next(rows_iterator)
+                    except StopIteration:
+
+                        messages.error(
+                            request,
+                            "Excel file is empty."
+                        )
+
+                        workbook.close()
+                        return redirect("..")
+
+                    headers = [
+                        str(header or "")
+                        .strip()
+                        .lower()
+                        .replace(" ", "_")
+                        .replace("\ufeff", "")
+                        for header in headers
+                    ]
+
+                    # -----------------------------------------
+                    # Check required columns
+                    # -----------------------------------------
+                    missing_columns = [
+                        field
+                        for field in required
+                        if field not in headers
+                    ]
+
+                    if missing_columns:
+
+                        messages.error(
+                            request,
+                            "Missing required columns: "
+                            + ", ".join(missing_columns)
+                        )
+
+                        workbook.close()
+                        return redirect("..")
+
+                    # -----------------------------------------
+                    # Process rows in batches
+                    # -----------------------------------------
+                    batch = []
+
+                    for row_number, values in enumerate(
+                        rows_iterator,
+                        start=2
+                    ):
+
+                        row = dict(
+                            zip(headers, values)
+                        )
+
+                        batch.append(
+                            (row_number, row)
+                        )
+
+                        if len(batch) >= BATCH_SIZE:
+
+                            process_batch(batch)
+
+                            batch.clear()
+
+                    # -----------------------------------------
+                    # Process remaining rows
+                    # -----------------------------------------
+                    if batch:
+                        process_batch(batch)
+
+                    workbook.close()
+
+                except ValueError:
+
+                    try:
+                        workbook.close()
+                    except Exception:
+                        pass
+
+                    return redirect("..")
+
+                except Exception as e:
+
+                    messages.error(
+                        request,
+                        f"Excel upload error: {str(e)}"
+                    )
+
+                    try:
+                        workbook.close()
+                    except Exception:
+                        pass
+
+                    return redirect("..")
+
+            # =================================================
+            # Invalid file
+            # =================================================
+            else:
+
+                messages.error(
                     request,
-                    f"Upload complete! Created: {created_count}, Skipped: {skipped_count}",
+                    "Upload only .csv or .xlsx files!"
                 )
+
                 return redirect("..")
 
-        else:
-            form = UserBulkUploadForm()
+            # =================================================
+            # Final messages
+            # =================================================
+            messages.success(
+                request,
+                f"Upload complete! "
+                f"Created: {created_count}, "
+                f"Skipped: {skipped_count}"
+            )
 
-        return render(request, "bulk_upload.html", {"form": form})
+            return redirect("..")
 
+        # =====================================================
+        # GET
+        # =====================================================
+        form = UserBulkUploadForm()
 
+        return render(
+            request,
+            "bulk_upload.html",
+            {"form": form}
+        )
 
 
 
