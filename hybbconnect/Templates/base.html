@@ -71,7 +71,8 @@
                 <div>
                     <strong>{{ request.user.username }}</strong> |
                     ID: {{ request.user.employee_id }} |
-                    Role: {{ request.user.get_role_display }}
+                    Role: {{ request.user.get_role_display }} |
+                    <a href="{% url 'change_password' %}" class="text-decoration-none">Change Password</a>
                 </div>
             {% endif %}
         </div>
