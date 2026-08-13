@@ -23,8 +23,21 @@
                 {% csrf_token %}
 
                 <div class="mb-3">
-                    <label class="form-label">Staff Member</label>
-                    {{ form.staff }}
+                    <label class="form-label" for="staff-search">Staff Member</label>
+                    <div class="staff-picker">
+                        {{ form.staff }}
+                        <input
+                            id="staff-search"
+                            class="form-control"
+                            type="search"
+                            placeholder="Type to search staff by name or employee ID"
+                            autocomplete="off"
+                        >
+                        <div id="staff-results" class="list-group staff-results" hidden></div>
+                    </div>
+                    {% for error in form.staff.errors %}
+                        <div class="invalid-feedback d-block">{{ error }}</div>
+                    {% endfor %}
                 </div>
 
                 <div class="mb-3">
@@ -62,5 +75,63 @@
     </div>
 
 </div>
+
+<style>
+    .staff-picker > select { display: none; }
+    .staff-picker { position: relative; }
+    .staff-results {
+        position: absolute;
+        z-index: 1000;
+        width: 100%;
+        max-height: 220px;
+        overflow-y: auto;
+    }
+    .staff-results button { text-align: left; }
+</style>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const select = document.querySelector(".staff-picker select");
+    const search = document.getElementById("staff-search");
+    const results = document.getElementById("staff-results");
+
+    if (!select || !search || !results) return;
+
+    const options = Array.from(select.options).filter(option => option.value);
+    const selected = options.find(option => option.selected);
+    if (selected) search.value = selected.text.trim();
+
+    function showMatches() {
+        const query = search.value.trim().toLowerCase();
+        const matches = options.filter(option =>
+            option.text.toLowerCase().includes(query)
+        );
+
+        results.replaceChildren();
+        matches.forEach(option => {
+            const item = document.createElement("button");
+            item.type = "button";
+            item.className = "list-group-item list-group-item-action";
+            item.textContent = option.text.trim();
+            item.addEventListener("click", function () {
+                select.value = option.value;
+                search.value = option.text.trim();
+                results.hidden = true;
+            });
+            results.appendChild(item);
+        });
+        results.hidden = matches.length === 0;
+    }
+
+    search.addEventListener("input", function () {
+        select.value = "";
+        showMatches();
+    });
+    search.addEventListener("focus", showMatches);
+    document.addEventListener("click", function (event) {
+        if (!event.target.closest(".staff-picker")) results.hidden = true;
+    });
+});
+</script>
 
 {% endblock %}
