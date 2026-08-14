@@ -1,114 +1,670 @@
 {% load static %}
 <!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8"/>
-    <title>Raise Ticket</title>
+<html lang="en">
 
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Raise Ticket | HybbConnect</title>
+
+    <!-- Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+          rel="stylesheet">
+
 
     <style>
+
+        /* =========================================
+           COLOR PALETTE
+        ========================================= */
+
+        :root {
+            --dark-green: #123B2A;
+            --dark-green-2: #174D36;
+
+            --green: #198754;
+            --green-dark: #146c43;
+            --green-light: #EAF6EF;
+
+            --yellow: #F4C542;
+            --yellow-dark: #D9A900;
+            --yellow-light: #FFF7D6;
+
+            --background: #F5F7F4;
+
+            --text: #26332C;
+            --muted: #6C757D;
+
+            --border: #DDE7E0;
+        }
+
+
+        /* =========================================
+           BODY
+        ========================================= */
+
         body {
-            background: #ffffff;
+            background-color: var(--background);
+
+            font-family:
+                "Segoe UI",
+                Tahoma,
+                Geneva,
+                Verdana,
+                sans-serif;
+
+            color: var(--text);
+
+            margin: 0;
         }
+
+
+        /* =========================================
+           TOP HEADER
+        ========================================= */
+
+        .page-header {
+            background-color: var(--dark-green);
+
+            color: white;
+
+            padding: 16px 30px;
+
+            border-bottom: 4px solid var(--yellow);
+
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.12);
+        }
+
+
+        .page-header-title {
+            font-size: 21px;
+
+            font-weight: 600;
+
+            margin: 0;
+        }
+
+
+        .page-header-subtitle {
+            font-size: 13px;
+
+            color: #B8DCC6;
+
+            margin-top: 2px;
+        }
+
+
+        /* =========================================
+           LOGO
+        ========================================= */
+
+        .logo-section {
+            text-align: center;
+
+            padding: 25px 0 10px;
+        }
+
+
+        .logo-section img {
+            width: 220px;
+
+            max-width: 80%;
+
+            height: auto;
+        }
+
+
+        /* =========================================
+           BACK BUTTON
+        ========================================= */
+
+        .back-button {
+            color: var(--dark-green);
+
+            border: 1px solid var(--dark-green);
+
+            background-color: white;
+
+            font-weight: 500;
+
+            border-radius: 7px;
+
+            padding: 7px 14px;
+
+            transition: all 0.2s ease;
+        }
+
+
+        .back-button:hover {
+            background-color: var(--dark-green);
+
+            color: white;
+
+            border-color: var(--dark-green);
+        }
+
+
+        /* =========================================
+           TICKET CARD
+        ========================================= */
+
         .ticket-card {
-            background: #aba9a9;
-            border-radius: 12px;
+            background-color: white;
+
+            border-radius: 14px;
+
             padding: 30px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+
+            border: 1px solid var(--border);
+
+            box-shadow:
+                0 4px 18px rgba(0, 0, 0, 0.07);
+
+            margin-top: 15px;
         }
+
+
+        /* =========================================
+           TITLE
+        ========================================= */
+
         .page-title {
             font-weight: 700;
-            color: #0d6efd;
+
+            color: var(--dark-green);
+
+            margin-bottom: 25px;
         }
+
+
+        .ticket-icon {
+            display: inline-flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            width: 42px;
+
+            height: 42px;
+
+            background-color: var(--yellow);
+
+            color: var(--dark-green);
+
+            border-radius: 50%;
+
+            margin-right: 8px;
+
+            font-size: 20px;
+        }
+
+
+        /* =========================================
+           FORM LABEL
+        ========================================= */
+
         .form-floating > label {
             padding: .75rem .75rem;
+
+            color: #68756D;
         }
-        .form-floating > .form-control, 
+
+
+        /* =========================================
+           FORM CONTROLS
+        ========================================= */
+
+        .form-floating > .form-control,
         .form-floating > .form-select {
-            border-radius: 10px;
+
+            border-radius: 9px;
+
+            border: 1px solid #CED9D2;
+
+            min-height: 58px;
+
+            color: var(--text);
+
+            background-color: white;
         }
+
+
+        .form-floating > textarea.form-control {
+            min-height: 130px;
+        }
+
+
+        .form-floating > .form-control:focus,
+        .form-floating > .form-select:focus {
+
+            border-color: var(--green);
+
+            box-shadow:
+                0 0 0 0.2rem rgba(25, 135, 84, 0.15);
+        }
+
+
+        /* Readonly fields */
+
+        .form-control[readonly] {
+
+            background-color: var(--green-light);
+
+            border-color: #C9DFD1;
+
+            color: var(--dark-green);
+
+            font-weight: 500;
+        }
+
+
+        /* =========================================
+           SECTION LABEL
+        ========================================= */
+
+        .field-title {
+            color: var(--dark-green);
+
+            font-size: 14px;
+
+            font-weight: 600;
+
+            margin-bottom: 7px;
+        }
+
+
+        /* =========================================
+           SUBMIT BUTTON
+        ========================================= */
+
+        .submit-btn {
+
+            background-color: var(--green);
+
+            border: none;
+
+            color: white;
+
+            font-size: 16px;
+
+            font-weight: 600;
+
+            padding: 12px;
+
+            border-radius: 8px;
+
+            transition: all 0.2s ease;
+        }
+
+
+        .submit-btn:hover {
+
+            background-color: var(--green-dark);
+
+            color: white;
+
+            transform: translateY(-1px);
+
+            box-shadow:
+                0 4px 10px rgba(20, 108, 67, 0.25);
+        }
+
+
+        /* =========================================
+           ALERT
+        ========================================= */
+
+        .alert-success {
+
+            background-color: var(--green-light);
+
+            color: var(--green-dark);
+
+            border: 1px solid #B9DCC8;
+
+            border-radius: 8px;
+        }
+
+
+        /* =========================================
+           IMPORTANT NOTE
+        ========================================= */
+
+        .ticket-note {
+
+            background-color: var(--yellow-light);
+
+            border-left: 4px solid var(--yellow);
+
+            padding: 10px 14px;
+
+            border-radius: 6px;
+
+            color: #665500;
+
+            font-size: 13px;
+
+            margin-bottom: 20px;
+        }
+
+
+        /* =========================================
+           MOBILE
+        ========================================= */
+
+        @media (max-width: 768px) {
+
+            .page-header {
+                padding: 15px 18px;
+            }
+
+            .page-header-title {
+                font-size: 18px;
+            }
+
+            .ticket-card {
+                padding: 20px;
+            }
+
+            .logo-section {
+                padding-top: 20px;
+            }
+
+        }
+
     </style>
+
 </head>
 
+
 <body>
-<div class="text-center"></div>
-<img src="{% static 'images/academy_logo.png' %}" alt="BigBites Academy Logo" class="img-fluid" style="width:250px;">
+
+
+<!-- =========================================
+     HEADER
+========================================= -->
+
+<div class="page-header">
+
+    <div class="container">
+
+        <h1 class="page-header-title">
+            HybbConnect
+        </h1>
+
+        <div class="page-header-subtitle">
+            Employee Support & Ticket Management
+        </div>
+
+    </div>
+
 </div>
-<div class="container py-5">
+
+
+
+<!-- =========================================
+     LOGO
+========================================= -->
+
+<div class="logo-section">
+
+    <img src="{% static 'images/academy_logo.png' %}"
+         alt="BigBites Academy Logo">
+
+</div>
+
+
+
+<!-- =========================================
+     MAIN CONTENT
+========================================= -->
+
+<div class="container py-3 py-md-4">
+
     <div class="row justify-content-center">
-        <div class="col-md-8">
-        <a href="{% url 'staff_dashboard' %}" class="btn btn-outline-secondary btn-sm">
-            ⬅ Back to Dashboard
-        </a>
+
+        <div class="col-lg-8 col-md-10">
+
+
+            <!-- BACK BUTTON -->
+
+            <div class="mb-3">
+
+                <a href="{% url 'staff_dashboard' %}"
+                   class="btn btn-sm back-button">
+
+                    ⬅ Back to Dashboard
+
+                </a>
+
+            </div>
+
+
+
+            <!-- TICKET CARD -->
 
             <div class="ticket-card">
-                <h3 class="page-title text-center mb-4">🎫 Raise a Ticket</h3>
+
+
+                <!-- TITLE -->
+
+                <h3 class="page-title text-center">
+
+                    <span class="ticket-icon">
+                        🎫
+                    </span>
+
+                    Raise a Ticket
+
+                </h3>
+
+
+
+                <!-- INFORMATION -->
+
+                <div class="ticket-note">
+
+                    <strong>Note:</strong>
+                    Please provide clear details about your concern
+                    so it can be resolved quickly.
+
+                </div>
+
+
+
+                <!-- SUCCESS MESSAGE -->
 
                 {% if messages %}
+
                     {% for message in messages %}
-                        <div class="alert alert-success">{{ message }}</div>
+
+                        <div class="alert alert-success mb-4">
+
+                            {{ message }}
+
+                        </div>
+
                     {% endfor %}
+
                 {% endif %}
 
+
+
+                <!-- FORM -->
+
                 <form method="post" novalidate>
+
                     {% csrf_token %}
 
-                    <!-- Employee ID & Name -->
+
+
+                    <!-- =================================
+                         EMPLOYEE INFORMATION
+                    ================================== -->
+
                     <div class="row mb-3">
+
+                        <!-- Employee ID -->
+
                         <div class="col-md-6">
+
                             <div class="form-floating">
-                                <input type="text" class="form-control" value="{{ request.user.employee_id }}" readonly>
-                                <label>Employee ID</label>
+
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    value="{{ request.user.employee_id }}"
+                                    readonly
+                                >
+
+                                <label>
+                                    Employee ID
+                                </label>
+
                             </div>
+
                         </div>
+
+
+
+                        <!-- Name -->
+
                         <div class="col-md-6 mt-3 mt-md-0">
+
                             <div class="form-floating">
-                                <input type="text" class="form-control" value="{{ request.user.username }}" readonly>
-                                <label>Name</label>
+
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    value="{{ request.user.username }}"
+                                    readonly
+                                >
+
+                                <label>
+                                    Name
+                                </label>
+
                             </div>
+
                         </div>
+
                     </div>
 
-                    <!-- Location -->
+
+
+                    <!-- =================================
+                         LOCATION
+                    ================================== -->
+
                     <div class="mb-3">
+
                         {% if request.user.location %}
+
                             <div class="form-floating">
-                                <input type="text" class="form-control" value="{{ request.user.location.name }}" readonly>
-                                <label>Location</label>
+
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    value="{{ request.user.location.name }}"
+                                    readonly
+                                >
+
+                                <label>
+                                    Location
+                                </label>
+
                             </div>
-                            <input type="hidden" name="location" value="{{ request.user.location.id }}">
+
+                            <input
+                                type="hidden"
+                                name="location"
+                                value="{{ request.user.location.id }}"
+                            >
+
                         {% else %}
+
                             <div class="form-floating">
+
                                 {{ form.location }}
-                                <label>Location</label>
+
+                                <label>
+                                    Location
+                                </label>
+
                             </div>
+
                         {% endif %}
+
                     </div>
 
-                    <!-- Concern -->
+
+
+                    <!-- =================================
+                         CONCERN
+                    ================================== -->
+
                     <div class="mb-3 form-floating">
+
                         {{ form.concern }}
-                        <label>Concern</label>
+
+                        <label>
+                            Concern
+                        </label>
+
                     </div>
 
-                    <!-- Description -->
+
+
+                    <!-- =================================
+                         DESCRIPTION
+                    ================================== -->
+
                     <div class="mb-3 form-floating">
+
                         {{ form.description }}
-                        <label>Description</label>
+
+                        <label>
+                            Description
+                        </label>
+
                     </div>
 
-                    <button class="btn btn-primary w-100 mt-3" type="submit">
-                        Submit Ticket
+
+
+                    <!-- =================================
+                         SUBMIT
+                    ================================== -->
+
+                    <button
+                        class="btn submit-btn w-100 mt-3"
+                        type="submit"
+                    >
+
+                        🎫 Submit Ticket
+
                     </button>
 
+
                 </form>
+
             </div>
 
         </div>
+
     </div>
+
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+
+<!-- Bootstrap JS -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js">
+</script>
+
+
 </body>
 </html>

@@ -3,11 +3,14 @@
 {% block title %}Owner Dashboard{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<style>
+  .owner-dashboard{min-height:calc(100vh - 76px);background:#f8faf5}.owner-sidebar{background:linear-gradient(180deg,#164d34,#103827)!important;color:#eaf3df!important;min-height:calc(100vh - 76px);padding:24px 16px!important}.owner-sidebar h4{color:#fff;font-weight:700;margin-bottom:28px!important}.owner-sidebar a{display:block;color:#e1edda;text-decoration:none;padding:11px 12px;border-radius:8px;margin:4px 0}.owner-sidebar a:hover{background:#2d6948;color:#fff}.owner-content{padding:30px!important}.owner-content>h2{display:none}.owner-hero{background:linear-gradient(115deg,#164d34,#358450);color:#fff;padding:28px 32px;border-radius:18px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:16px}.owner-hero p{margin:5px 0 0;color:#e5f1e5}.owner-hero .eyebrow{font-size:.72rem;letter-spacing:.13em;font-weight:700;color:#f6d95e;margin:0}.owner-hero h2{margin:4px 0 0;font-size:1.8rem}.owner-card{border:1px solid #e0eadb!important;border-radius:14px!important;overflow:hidden;box-shadow:0 3px 12px rgba(32,82,52,.05)!important}.owner-card .card-header{background:#f5f9ef!important;color:#204632;border-bottom:1px solid #e0eadb}.owner-card .table thead th{background:#edf6e7;color:#607664;font-size:.74rem;text-transform:uppercase}.owner-card .btn-outline-success{color:#237242;border-color:#237242}.owner-card .btn-outline-primary{color:#7d620f;border-color:#d3ad2e}.owner-badge{background:#f1cd46!important;color:#365322!important;border:0}.modal-header{background:#164d34;color:#fff}@media(max-width:767px){.owner-sidebar{min-height:auto}.owner-content{padding:18px!important}.owner-hero{padding:23px;align-items:flex-start;flex-direction:column}.owner-card .table{min-width:950px}}
+</style>
+<div class="container-fluid owner-dashboard">
     <div class="row">
 
         <!-- Sidebar -->
-        <div class="col-md-2 sidebar">
+        <div class="col-md-2 owner-sidebar">
             <h4 class="text-center mb-4">HybbConnect</h4>
             <a href="{% url 'owner_dashboard' %}">🏠 Dashboard</a>
             <a href="{% url 'logout' %}">🚪 Logout</a>
@@ -15,7 +18,8 @@
 
         <!-- Main Content -->
         <div class="col-md-10">
-            <div class="content">
+            <div class="owner-content">
+                <div class="owner-hero"><div><p class="eyebrow">OWNER WORKSPACE</p><h2>Owner Dashboard</h2><p>Review, resolve, reassign, and close tickets across your operations.</p></div><a href="{% url 'change_password' %}" class="btn owner-badge"><i class="bi bi-key"></i> Change Password</a></div>
                 <h2 class="mb-4">🎯 Owner Dashboard</h2>
 
                 {% if messages %}
@@ -25,7 +29,7 @@
                 {% endif %}
 
                 {% if tickets %}
-                    <div class="card shadow-sm">
+                    <div class="card shadow-sm owner-card">
                         <div class="card-header bg-light">
                             <h5 class="mb-0">All Active Tickets</h5>
                         </div>

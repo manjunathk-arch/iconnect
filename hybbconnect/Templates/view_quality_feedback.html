@@ -1,389 +1,64 @@
 {% extends "base.html" %}
 
+{% block title %}Quality Feedback{% endblock %}
+
 {% block content %}
-
-<div class="card shadow">
-
-    <div class="card-header bg-danger text-white">
-
-        <div class="d-flex justify-content-between align-items-center">
-
-            <h4 class="mb-0">
-                Quality Feedback
-            </h4>
-
+<div class="quality-page">
+    <div class="quality-shell">
+        <section class="quality-hero">
             <div>
-
-                <!-- Dashboard -->
-                {% if request.user.role == "kitchen_manager" %}
-                    <a href="{% url 'manager_dashboard' %}"
-                       class="btn btn-light btn-sm">
-                        🏠 Dashboard
-                    </a>
-                {% elif request.user.role == "cluster_manager" %}
-                    <a href="{% url 'cluster_dashboard' %}"
-                       class="btn btn-light btn-sm">
-                        🏠 Dashboard
-                    </a>
-                {% elif request.user.role == "kitchen_staff" %}
-                    <a href="{% url 'staff_dashboard' %}"
-                       class="btn btn-light btn-sm">
-                        🏠 Dashboard
-                    </a>
-                {% elif request.user.role == "admin" %}
-                    <a href="{% url 'admin_dashboard' %}"
-                       class="btn btn-light btn-sm">
-                        🏠 Dashboard
-                    </a>
-                {% elif request.user.role == "owner" %}
-                    <a href="{% url 'owner_dashboard' %}"
-                       class="btn btn-light btn-sm">
-                        🏠 Dashboard
-                    </a>
-                {% endif %}
-
-
-                <!-- Raise Feedback -->
-                {% if request.user.role == "kitchen_manager" or request.user.role == "cluster_manager" %}
-
-                    <a href="{% url 'raise_quality_feedback' %}"
-                       class="btn btn-light btn-sm">
-
-                        + Raise Feedback
-
-                    </a>
-
-                {% endif %}
-
-
-                <!-- Admin CSV -->
-                {% if request.user.role == "admin" %}
-
-                    <a href="{% url 'quality_feedback_analytics' %}"
-                       class="btn btn-light btn-sm">
-                        Usage Analytics
-                    </a>
-
-                    <a href="{% url 'export_quality_feedback_csv' %}"
-                       class="btn btn-warning btn-sm">
-
-                        ⬇ Download CSV
-
-                    </a>
-
-                {% endif %}
-
+                <p class="eyebrow">QUALITY MANAGEMENT</p>
+                <h1>Quality Feedback</h1>
+                <p>Review feedback, monitor acknowledgements, and help teams maintain quality standards.</p>
             </div>
+            <div class="quality-actions">
+                {% if request.user.role == "kitchen_manager" %}<a href="{% url 'manager_dashboard' %}" class="btn btn-light"><i class="bi bi-grid-1x2"></i> Dashboard</a>{% elif request.user.role == "cluster_manager" %}<a href="{% url 'cluster_dashboard' %}" class="btn btn-light"><i class="bi bi-grid-1x2"></i> Dashboard</a>{% elif request.user.role == "kitchen_staff" %}<a href="{% url 'staff_dashboard' %}" class="btn btn-light"><i class="bi bi-grid-1x2"></i> Dashboard</a>{% elif request.user.role == "admin" %}<a href="{% url 'admin_dashboard' %}" class="btn btn-light"><i class="bi bi-grid-1x2"></i> Dashboard</a>{% elif request.user.role == "owner" %}<a href="{% url 'owner_dashboard' %}" class="btn btn-light"><i class="bi bi-grid-1x2"></i> Dashboard</a>{% endif %}
+                {% if request.user.role == "kitchen_manager" or request.user.role == "cluster_manager" %}<a href="{% url 'raise_quality_feedback' %}" class="btn feedback-button"><i class="bi bi-plus-circle"></i> Raise feedback</a>{% endif %}
+                {% if request.user.role == "admin" %}<a href="{% url 'quality_feedback_analytics' %}" class="btn btn-outline-light"><i class="bi bi-graph-up"></i> Usage</a><a href="{% url 'export_quality_feedback_csv' %}" class="btn feedback-button"><i class="bi bi-download"></i> CSV</a>{% endif %}
+            </div>
+        </section>
 
-        </div>
+        {% if messages %}{% for message in messages %}<div class="alert alert-success shadow-sm mt-3">{{ message }}</div>{% endfor %}{% endif %}
 
-    </div>
-
-
-    <div class="card-body">
-
-
-        <!-- Messages -->
-
-        {% if messages %}
-
-            {% for message in messages %}
-
-                <div class="alert alert-success">
-
-                    {{ message }}
-
-                </div>
-
-            {% endfor %}
-
-        {% endif %}
-
-
-        <!-- FILTER -->
+        <section class="quality-summary">
+            <div class="summary-icon"><i class="bi bi-clipboard-data"></i></div>
+            <div><strong>{{ feedbacks|length }}</strong><span>feedback record{{ feedbacks|length|pluralize }} shown</span></div>
+            <div class="summary-note"><i class="bi bi-shield-check"></i> Visible records are based on your role and assigned locations.</div>
+        </section>
 
         {% if request.user.role == "admin" or request.user.role == "kitchen_manager" or request.user.role == "cluster_manager" %}
-
-        <form method="GET"
-              class="row g-3 mb-4">
-
-
-            <!-- Employee ID -->
-
-            <div class="col-md-4">
-
-                <label class="form-label">
-                    Employee ID
-                </label>
-
-                <input
-                    type="text"
-                    name="employee_id"
-                    value="{{ selected_employee_id }}"
-                    class="form-control"
-                    placeholder="Enter Employee ID"
-                >
-
-            </div>
-
-
-            <!-- Location -->
-
-            <div class="col-md-4">
-
-                <label class="form-label">
-                    Location
-                </label>
-
-                <select
-                    name="location"
-                    class="form-select">
-
-                    <option value="">
-                        All Locations
-                    </option>
-
-                    {% for loc in locations %}
-
-                        <option
-                            value="{{ loc }}"
-                            {% if selected_location == loc %}
-                                selected
-                            {% endif %}
-                        >
-
-                            {{ loc }}
-
-                        </option>
-
-                    {% endfor %}
-
-                </select>
-
-            </div>
-
-
-            <!-- Buttons -->
-
-            <div class="col-md-4 d-flex align-items-end">
-
-                <button
-                    type="submit"
-                    class="btn btn-primary me-2">
-
-                    🔍 Filter
-
-                </button>
-
-
-                <a
-                    href="{% url 'view_quality_feedback' %}"
-                    class="btn btn-secondary">
-
-                    Reset
-
-                </a>
-
-            </div>
-
-        </form>
-
+            <section class="filter-card">
+                <form method="get" class="feedback-filter">
+                    <div class="filter-heading"><i class="bi bi-funnel"></i><span><strong>Filter feedback</strong><small>Find feedback by employee ID or location</small></span></div>
+                    <div><label for="employee_id">Employee ID</label><input id="employee_id" type="text" name="employee_id" value="{{ selected_employee_id }}" placeholder="Search employee ID"></div>
+                    <div><label for="location">Location</label><select id="location" name="location"><option value="">All locations</option>{% for loc in locations %}<option value="{{ loc }}" {% if selected_location == loc %}selected{% endif %}>{{ loc }}</option>{% endfor %}</select></div>
+                    <div class="filter-buttons"><button type="submit" class="btn btn-success"><i class="bi bi-search"></i> Apply</button><a href="{% url 'view_quality_feedback' %}" class="btn btn-outline-secondary">Reset</a></div>
+                </form>
+            </section>
         {% endif %}
 
-
-        <!-- TABLE -->
-
-        {% if feedbacks %}
-
-        <div class="table-responsive">
-
-            <table class="table table-bordered table-hover align-middle">
-
-                <thead class="table-dark">
-
-                    <tr>
-
-                        <th>Date</th>
-
-                        <th>Employee ID</th>
-
-                        <th>Staff Name</th>
-
-                        <th>Location</th>
-
-                        <th>Category</th>
-
-                        <th>Remarks</th>
-
-                        <th>Status</th>
-
-                        {% if request.user.role == "kitchen_staff" %}
-
-                            <th>Action</th>
-
-                        {% endif %}
-
-                    </tr>
-
-                </thead>
-
-
-                <tbody>
-
-                    {% for feedback in feedbacks %}
-
-                    <tr>
-
-                        <td>
-                            {{ feedback.feedback_date|date:"d M Y" }}
-                        </td>
-
-
-                        <td>
-                            {{ feedback.emp_id }}
-                        </td>
-
-
-                        <td>
-                            {{ feedback.emp_name }}
-                        </td>
-
-
-                        <td>
-                            {{ feedback.location }}
-                        </td>
-
-
-                        <td>
-
-                            {% if feedback.category == "Code red" %}
-
-                                <span class="badge bg-danger">
-                                    Code red
-                                </span>
-
-                            {% elif feedback.category == "Food Safety" %}
-
-                                <span class="badge bg-warning text-dark">
-                                    Food Safety
-                                </span>
-
-                            {% elif feedback.category == "Food Quality" %}
-
-                                <span class="badge bg-primary">
-                                    Food Quality
-                                </span>
-
-                            {% elif feedback.category == "Food Quantity" %}
-
-                                <span class="badge bg-info text-dark">
-                                    Food Quantity
-                                </span>
-
-                            {% elif feedback.category == "Incomplete Order" %}
-
-                                <span class="badge bg-secondary">
-                                    Incomplete Order
-                                </span>
-
-                            {% else %}
-
-                                {{ feedback.category }}
-
-                            {% endif %}
-
-                        </td>
-
-
-                        <td>
-                            {{ feedback.remarks|default:"-" }}
-                        </td>
-
-
-                        <td>
-
-                            {% if feedback.is_acknowledged %}
-
-                                <span class="badge bg-success">
-                                    Acknowledged
-                                </span>
-
-                                <br>
-
-                                <small class="text-muted">
-
-                                    {{ feedback.acknowledged_at|date:"d M Y H:i" }}
-
-                                </small>
-
-                            {% else %}
-
-                                <span class="badge bg-warning text-dark">
-                                    Pending
-                                </span>
-
-                            {% endif %}
-
-                        </td>
-
-
-                        {% if request.user.role == "kitchen_staff" %}
-
-                        <td>
-
-                            {% if feedback.staff == request.user %}
-
-                                {% if not feedback.is_acknowledged %}
-
-                                    <a
-                                        href="{% url 'acknowledge_quality_feedback' feedback.id %}"
-                                        class="btn btn-success btn-sm"
-                                        onclick="return confirm('Acknowledge this feedback?');">
-
-                                        ✓ Acknowledge
-
-                                    </a>
-
-                                {% else %}
-
-                                    <button
-                                        class="btn btn-secondary btn-sm"
-                                        disabled>
-
-                                        Completed
-
-                                    </button>
-
-                                {% endif %}
-
-                            {% endif %}
-
-                        </td>
-
-                        {% endif %}
-
-                    </tr>
-
-                    {% endfor %}
-
-                </tbody>
-
-            </table>
-
-        </div>
-
-        {% else %}
-
-            <div class="alert alert-info">
-
-                No Quality Feedback records found.
-
-            </div>
-
-        {% endif %}
-
+        <section class="feedback-card">
+            <div class="section-heading"><div><h2>Feedback records</h2><p>Quality feedback for your accessible staff and locations.</p></div>{% if request.user.role == "kitchen_staff" %}<span class="staff-notice"><i class="bi bi-info-circle"></i> Acknowledge pending feedback below</span>{% endif %}</div>
+            {% if feedbacks %}
+                <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Date</th><th>Employee</th><th>Location</th><th>Category</th><th>Remarks</th><th>Status</th>{% if request.user.role == "kitchen_staff" %}<th>Action</th>{% endif %}</tr></thead><tbody>
+                    {% for feedback in feedbacks %}<tr>
+                        <td class="date-cell">{{ feedback.feedback_date|date:"d M Y" }}</td>
+                        <td><strong>{{ feedback.emp_name }}</strong><small>{{ feedback.emp_id }}</small></td>
+                        <td>{{ feedback.location }}</td>
+                        <td><span class="category-tag">{{ feedback.category }}</span></td>
+                        <td class="remarks">{{ feedback.remarks|default:"—" }}</td>
+                        <td>{% if feedback.is_acknowledged %}<span class="status-tag acknowledged"><i class="bi bi-check2"></i> Acknowledged</span><small class="status-date">{{ feedback.acknowledged_at|date:"d M Y, H:i" }}</small>{% else %}<span class="status-tag pending"><i class="bi bi-hourglass-split"></i> Pending</span>{% endif %}</td>
+                        {% if request.user.role == "kitchen_staff" %}<td>{% if feedback.staff == request.user %}{% if not feedback.is_acknowledged %}<a href="{% url 'acknowledge_quality_feedback' feedback.id %}" class="btn btn-sm btn-success" onclick="return confirm('Acknowledge this feedback?');"><i class="bi bi-check2-circle"></i> Acknowledge</a>{% else %}<span class="small text-muted">Completed</span>{% endif %}{% endif %}</td>{% endif %}
+                    </tr>{% endfor %}
+                </tbody></table></div>
+            {% else %}
+                <div class="empty-state"><i class="bi bi-clipboard-x"></i><h3>No feedback found</h3><p>There are no Quality Feedback records matching the selected filters.</p>{% if request.user.role == "kitchen_manager" or request.user.role == "cluster_manager" %}<a href="{% url 'raise_quality_feedback' %}" class="btn btn-success">Raise feedback</a>{% endif %}</div>
+            {% endif %}
+        </section>
     </div>
-
 </div>
 
+<style>
+    .quality-page{min-height:calc(100vh - 76px);padding:32px 20px;background:linear-gradient(135deg,#f7faf4,#fbf8e9)}.quality-shell{max-width:1280px;margin:auto}.quality-hero{background:linear-gradient(115deg,#1d6845,#388650);border-radius:18px;padding:29px 33px;color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;box-shadow:0 10px 24px rgba(30,100,67,.18)}.eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.13em;color:#f7d95e;margin:0 0 7px}.quality-hero h1{font-size:1.85rem;margin:0 0 8px}.quality-hero p:not(.eyebrow){margin:0;color:#e5f1e5}.quality-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:9px}.feedback-button{background:#f1cd46!important;border-color:#f1cd46!important;color:#365322!important;font-weight:650}.quality-summary{background:#fff;border:1px solid #e1eadc;border-radius:13px;padding:15px 20px;margin:22px 0;display:flex;align-items:center;gap:12px;box-shadow:0 3px 10px rgba(32,82,52,.04)}.summary-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:10px;background:#dff1df;color:#237445;font-size:1.25rem}.quality-summary strong,.quality-summary span{display:block}.quality-summary strong{font-size:1.35rem;color:#294c38;line-height:1}.quality-summary span{font-size:.8rem;color:#788879;margin-top:3px}.summary-note{margin-left:auto;color:#6f826f;font-size:.82rem}.summary-note i{color:#d0a825}.filter-card,.feedback-card{background:#fff;border:1px solid #e1eadc;border-radius:14px;padding:21px;box-shadow:0 3px 12px rgba(32,82,52,.04)}.filter-card{margin-bottom:22px}.feedback-filter{display:grid;grid-template-columns:1.25fr 1fr 1fr auto;align-items:end;gap:13px}.filter-heading{display:flex;gap:9px;align-items:center;color:#31513d;padding-bottom:4px}.filter-heading i{font-size:1.3rem;color:#247647}.filter-heading strong,.filter-heading small{display:block}.filter-heading small{font-size:.76rem;color:#7b8c7c}.feedback-filter label{display:block;font-size:.78rem;font-weight:650;color:#526755;margin-bottom:5px}.feedback-filter input,.feedback-filter select{width:100%;padding:9px 10px;border:1px solid #d4e2d1;border-radius:8px;color:#405442;background:#fff}.filter-buttons{display:flex;gap:8px}.section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-bottom:17px}.section-heading h2{margin:0;color:#204632;font-size:1.1rem;font-weight:700}.section-heading p{margin:4px 0 0;color:#7b8c7c;font-size:.84rem}.staff-notice{font-size:.8rem;color:#7a651d;background:#fff4c9;padding:6px 9px;border-radius:7px}.table{font-size:.88rem}.table thead th{background:#f5f9ef;border-top:0;color:#697a6c;font-size:.73rem;text-transform:uppercase;letter-spacing:.04em}.table td small{display:block;color:#809080;font-size:.75rem;margin-top:2px}.date-cell{white-space:nowrap}.category-tag{display:inline-block;background:#eef6dd;color:#41612a;border-radius:99px;padding:4px 9px;font-size:.75rem;font-weight:650;max-width:215px}.remarks{min-width:190px;max-width:310px;color:#526352}.status-tag{display:inline-block;padding:4px 9px;border-radius:99px;font-size:.74rem;font-weight:650}.acknowledged{color:#237242;background:#dcf3df}.pending{color:#866313;background:#fff1b9}.status-date{white-space:nowrap}.empty-state{text-align:center;padding:48px 14px;color:#819081}.empty-state i{font-size:2.4rem;color:#d0a825;display:block;margin-bottom:10px}.empty-state h3{font-size:1.1rem;color:#48624f}.empty-state p{font-size:.9rem;margin-bottom:18px}@media(max-width:850px){.quality-hero{align-items:flex-start;flex-direction:column}.quality-actions{justify-content:flex-start}.feedback-filter{grid-template-columns:1fr 1fr}.filter-heading{grid-column:1/-1}.filter-buttons{align-self:end}}@media(max-width:576px){.quality-page{padding:20px 13px}.quality-hero{padding:23px}.quality-hero h1{font-size:1.55rem}.quality-summary{align-items:flex-start}.summary-note{display:none}.feedback-filter{grid-template-columns:1fr}.filter-buttons{width:100%}.filter-buttons .btn{flex:1}.section-heading{flex-direction:column}.table{min-width:830px}}
+</style>
 {% endblock %}
