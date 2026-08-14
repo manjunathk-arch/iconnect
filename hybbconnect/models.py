@@ -340,6 +340,14 @@ class QualityFeedback(models.Model):
         limit_choices_to={"role": "kitchen_staff"},
     )
 
+    raised_by = models.ForeignKey(
+        "CustomUser",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="raised_quality_feedback",
+    )
+
     emp_id = models.CharField(max_length=50, blank=True, null=True)
     emp_name = models.CharField(max_length=100, blank=True, null=True)
     location = models.CharField(max_length=50, default="UNKNOWN")

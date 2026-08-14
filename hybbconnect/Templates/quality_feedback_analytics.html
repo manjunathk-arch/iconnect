@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block title %}Quality Feedback Usage{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Quality Feedback Usage</h1>
+            <p class="text-muted mb-0">How often managers and cluster managers use Quality Feedback.</p>
+        </div>
+        <a href="{% url 'view_quality_feedback' %}" class="btn btn-outline-secondary">Back to feedback</a>
+    </div>
+
+    <div class="row g-3 mb-4">
+        <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><p class="text-muted mb-1">Total feedback raised</p><strong class="display-6">{{ total_feedback }}</strong></div></div></div>
+        <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><p class="text-muted mb-1">Raised this month</p><strong class="display-6">{{ feedback_this_month }}</strong></div></div></div>
+        <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-body"><p class="text-muted mb-1">Users who raised feedback</p><strong class="display-6">{{ unique_raisers }}</strong></div></div></div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white"><strong>Usage by user</strong></div>
+        {% if user_usage %}
+            <div class="table-responsive"><table class="table align-middle mb-0"><thead class="table-light"><tr><th>User</th><th>Employee ID</th><th>Role</th><th class="text-end">Feedback raised</th></tr></thead><tbody>
+                {% for usage in user_usage %}<tr><td>{{ usage.get_full_name|default:usage.username }}</td><td>{{ usage.employee_id }}</td><td>{{ usage.get_role_display }}</td><td class="text-end fw-bold">{{ usage.feedback_count }}</td></tr>{% endfor %}
+            </tbody></table></div>
+        {% else %}
+            <div class="card-body text-muted">No submitted feedback has been tracked yet. New feedback will appear here after this update is deployed.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

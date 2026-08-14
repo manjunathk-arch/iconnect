@@ -18,6 +18,7 @@ urlpatterns = [
     path('cluster_dashboard/', views.cluster_dashboard, name='cluster_dashboard'),
     path('owner_dashboard/', views.owner_dashboard, name='owner_dashboard'),
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path('export/users/', views.export_users_csv, name='export_users_csv'),
 
     # ------------------------
     # Tickets
@@ -35,6 +36,7 @@ urlpatterns = [
     path('ticket/<int:ticket_id>/reassign/', views.reassign_ticket, name='reassign_ticket'),
     path('ticket/<int:ticket_id>/close/', views.close_ticket, name='close_ticket'),
     path('ticket/<int:ticket_id>/confirm/', views.confirm_resolution, name='confirm_resolution'),
+    path('ticket/<int:ticket_id>/resolve/', views.resolve_ticket, name='resolve_ticket'),
 
     # ------------------------
     # Owner/Staff Confirmation
@@ -93,6 +95,7 @@ urlpatterns = [
 # ------------------------
     path("raise_quality_feedback/",views.raise_quality_feedback,name="raise_quality_feedback",),
     path("view_quality_feedback/",views.view_quality_feedback,name="view_quality_feedback",),
+    path("quality-feedback-analytics/", views.quality_feedback_analytics, name="quality_feedback_analytics"),
     path("acknowledge_quality_feedback/<int:feedback_id>/",views.acknowledge_quality_feedback,name="acknowledge_quality_feedback",),
     path("export/quality-feedback/",views.export_quality_feedback_csv,name="export_quality_feedback_csv",),
 

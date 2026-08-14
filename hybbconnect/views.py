@@ -1,60 +1,44 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
-from django.contrib.auth.forms import PasswordChangeForm
-from django.contrib import messages
-from django.contrib.auth.decorators import login_required, user_passes_test
+import csv
+from datetime import datetime, timedelta
 from functools import wraps
+
+from django.contrib import messages
+from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.auth import (
+    authenticate,
+    get_user_model,
+    login,
+    logout,
+    update_session_auth_hash,
+)
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth.forms import PasswordChangeForm
+from django.core.paginator import Paginator
+from django.db.models import Count, Q
+from django.http import HttpResponse, HttpResponseForbidden
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+
+from .forms import (
+    IConnectForm,
+    KitchenLogForm,
+    KitchenPlayerForm,
+    OrderPhotoForm,
+    QualityFeedbackForm,
+    StaffTimeUpdateForm,
+)
 from .models import (
+    Attendance,
     CustomUser,
-    Location,
-    StaffPerformance,
     KitchenLog,
+    Location,
+    OrderPhoto,
+    QualityFeedback,
+    SalarySlip,
+    StaffPerformance,
     StaffTimeUpdate,
     Ticket,
 )
-from .forms import KitchenLogForm, KitchenPlayerForm, IConnectForm, StaffTimeUpdateForm
-from django.db.models import Count
-from .models import CustomUser
-from .forms import IConnectForm
-from .models import Ticket, CustomUser
-from django.contrib.auth import get_user_model
-from django.contrib.auth.decorators import user_passes_test
-from django.db.models import Q
-import csv
-from django.http import HttpResponse, HttpResponseForbidden
-from django.core.paginator import Paginator
-from datetime import timedelta
-import csv
-from django.db.models import Count
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from .forms import IConnectForm
-from .models import CustomUser, Ticket
-from django.shortcuts import render, redirect
-from .forms import KitchenPlayerForm, IConnectForm
-from .models import Ticket
-from .utils import get_owner_for_category  # import helper if you moved it to utils
-from django.contrib.auth.decorators import login_required
-from django.shortcuts import render
-from .models import SalarySlip
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.http import HttpResponse
-from django.db.models import Q
-import csv
-from .forms import OrderPhotoForm
-from .models import OrderPhoto, Location
-from datetime import datetime
-from .models import Attendance
-
-from django.shortcuts import get_object_or_404, render, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages
-from django.utils import timezone
-from .forms import QualityFeedbackForm
-from .models import QualityFeedback
 
 
 # -----------------------------------------
@@ -241,33 +225,6 @@ def staff_dashboard(request):
 # ✅ Staff Confirms Final Closure
 # --------------------------
 
-@login_required
-def confirm_ticket_closure(request, ticket_id):
-    ticket = get_object_or_404(Ticket, id=ticket_id)
-
-    # ✅ Only the ticket owner (the one who raised it) can confirm
-    if ticket.employee != request.user:
-        messages.error(request, "❌ You are not authorized to confirm this ticket closure.")
-        return redirect("staff_dashboard")
-
-    # ✅ Allow confirmation only for resolved tickets
-    if ticket.status != "Resolved":
-        messages.warning(request, "⚠️ Ticket must be in 'Resolved' status before closing.")
-        return redirect("staff_dashboard")
-
-    # ✅ Prevent duplicate confirmation
-    if ticket.staff_confirmed:
-        messages.info(request, f"ℹ️ Ticket {ticket.ticket_number} is already closed.")
-        return redirect("staff_dashboard")
-
-    # ✅ Perform closure
-    ticket.status = "Closed"
-    ticket.closed_at = timezone.now()
-    ticket.staff_confirmed = True
-    ticket.save()
-
-    messages.success(request, f"✅ Ticket {ticket.ticket_number} has been closed successfully.")
-    return redirect("staff_dashboard")
 
 @login_required
 def acknowledge_log(request, log_id):
@@ -380,62 +337,7 @@ def resolve_ticket(request, ticket_id):
     messages.success(request, f"Ticket #{ticket.ticket_number} marked as Resolved. Awaiting Owner confirmation.")
     return redirect("manager_dashboard")
 
-from datetime import timedelta
-from .models import Attendance
 
-@login_required
-@user_passes_test(lambda u: u.role == "cluster_manager")
-def cluster_dashboard(request):
-    user = request.user
-
-    # ✅ Assigned locations
-    assigned_locations = []
-    if hasattr(user, "cluster_manager_profile"):
-        assigned_locations = user.cluster_manager_profile.locations.all()
-
-    kitchen_managers = CustomUser.objects.filter(
-        role="kitchen_manager",
-        location__in=assigned_locations
-    )
-
-    kitchen_staff = CustomUser.objects.filter(
-        role="kitchen_staff",
-        location__in=assigned_locations
-    )
-
-    tickets = Ticket.objects.filter(
-        Q(location__in=assigned_locations) | Q(raised_by=user)
-    ).order_by("-created_at")
-
-    kitchen_logs = KitchenLog.objects.filter(
-        location__in=[loc.code for loc in assigned_locations]
-    ).order_by("-created_at")[:10]
-
-    updates = StaffTimeUpdate.objects.filter(
-        staff__location__in=assigned_locations
-    ).select_related("staff", "staff__location").order_by("-updated_at")
-
-    # 🔥 NEW: Attendance (Last 7 Days for all staff in cluster)
-    last_7_days = timezone.localdate() - timedelta(days=6)
-
-    attendance_records = Attendance.objects.select_related(
-        "user", "user__location"
-    ).filter(
-        user__role="kitchen_staff",
-        user__location__in=assigned_locations,
-        date__gte=last_7_days
-    ).order_by("-date", "user__username")
-
-    return render(request, "cluster_dashboard.html", {
-        "assigned_locations": assigned_locations,
-        "kitchen_managers": kitchen_managers,
-        "kitchen_staff": kitchen_staff,
-        "kitchen_logs": kitchen_logs,
-        "tickets": tickets,
-
-        # 🔥 ADD
-        "attendance_records": attendance_records,
-    })
 
 # --------------------------
 # ✅ Owner Dashboard (Upgraded + Auto Close Support)
@@ -721,6 +623,30 @@ def admin_dashboard(request):
     return render(request, "admin_dashboard.html", context)
 
 
+@login_required
+@user_passes_test(is_admin)
+def export_users_csv(request):
+    """Download the complete user directory for administrators."""
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = 'attachment; filename="user_directory.csv"'
+    response.write("\ufeff")  # Makes the CSV open correctly in Excel.
+
+    writer = csv.writer(response)
+    writer.writerow(["EMP Name", "EMP ID", "Status", "Location", "Role"])
+
+    users = CustomUser.objects.select_related("location").order_by("employee_id")
+    for user in users:
+        writer.writerow([
+            user.get_full_name() or user.username,
+            user.employee_id,
+            "Active" if user.is_active else "Inactive",
+            user.location.name if user.location else "",
+            user.role,
+        ])
+
+    return response
+
+
 
 
 
@@ -786,132 +712,8 @@ def raise_staff_log(request):
     })
 
 
-@login_required
-@user_passes_test(lambda u: u.role in ["kitchen_manager", "cluster_manager"])
-def raise_quality_feedback(request):
-    user = request.user
-
-    form = QualityFeedbackForm(request.POST or None, user=user)
-
-    # Staff dropdown
-    if user.role == "kitchen_manager" and user.location:
-        staff_list = CustomUser.objects.filter(
-            role="kitchen_staff",
-            location=user.location
-        )
-
-    elif user.role == "cluster_manager" and hasattr(user, "cluster_manager_profile"):
-        assigned_locations = user.cluster_manager_profile.locations.all()
-
-        staff_list = CustomUser.objects.filter(
-            role="kitchen_staff",
-            location__in=assigned_locations
-        )
-
-    else:
-        staff_list = CustomUser.objects.filter(role="kitchen_staff")
-
-    if request.method == "POST" and form.is_valid():
-        feedback = form.save(commit=False)
-
-        # Save location
-        if user.role == "kitchen_manager":
-            feedback.location = (
-                user.location.code if user.location else "UNKNOWN"
-            )
-
-        elif user.role == "cluster_manager":
-            if feedback.staff and feedback.staff.location:
-                feedback.location = feedback.staff.location.code
-            else:
-                feedback.location = "UNKNOWN"
-
-        # Auto-fill employee details
-        if feedback.staff:
-            feedback.emp_id = feedback.staff.employee_id
-            feedback.emp_name = feedback.staff.username
-
-        feedback.save()
-
-        messages.success(request, "✅ Quality Feedback recorded successfully!")
-
-        if user.role == "cluster_manager":
-            return redirect("cluster_dashboard")
-
-        return redirect("manager_dashboard")
-
-    return render(
-        request,
-        "raise_quality_feedback.html",
-        {
-            "form": form,
-            "staff_list": staff_list,
-        },
-    )
 
 
-@login_required
-@user_passes_test(lambda u: u.role in ["kitchen_manager", "cluster_manager"])
-def raise_quality_feedback(request):
-    user = request.user
-
-    form = QualityFeedbackForm(request.POST or None, user=user)
-
-    # Staff dropdown
-    if user.role == "kitchen_manager" and user.location:
-        staff_list = CustomUser.objects.filter(
-            role="kitchen_staff",
-            location=user.location
-        )
-
-    elif user.role == "cluster_manager" and hasattr(user, "cluster_manager_profile"):
-        assigned_locations = user.cluster_manager_profile.locations.all()
-
-        staff_list = CustomUser.objects.filter(
-            role="kitchen_staff",
-            location__in=assigned_locations
-        )
-
-    else:
-        staff_list = CustomUser.objects.filter(role="kitchen_staff")
-
-    if request.method == "POST" and form.is_valid():
-        feedback = form.save(commit=False)
-
-        # Save location
-        if user.role == "kitchen_manager":
-            feedback.location = (
-                user.location.code if user.location else "UNKNOWN"
-            )
-
-        elif user.role == "cluster_manager":
-            if feedback.staff and feedback.staff.location:
-                feedback.location = feedback.staff.location.code
-            else:
-                feedback.location = "UNKNOWN"
-
-        # Auto-fill employee details
-        if feedback.staff:
-            feedback.emp_id = feedback.staff.employee_id
-            feedback.emp_name = feedback.staff.username
-
-        feedback.save()
-
-        messages.success(request, "✅ Quality Feedback recorded successfully!")
-
-        if user.role == "cluster_manager":
-            return redirect("cluster_dashboard")
-
-        return redirect("manager_dashboard")
-
-    return render(
-        request,
-        "raise_quality_feedback.html",
-        {
-            "form": form,
-            "staff_list": staff_list,
-        },
-    )
 
 @login_required
 @user_passes_test(lambda u: u.role == "kitchen_staff")
@@ -1311,7 +1113,6 @@ def view_kitchen_staff(request):
     return render(request, "view_kitchen_staff.html", {"kitchen_staff": kitchen_staff})
 
 
-from django.db.models import Q
 
 @login_required
 def view_kitchen_logs(request):
@@ -1703,10 +1504,6 @@ def cluster_ot_sac_list(request):
     return render(request, "cluster_ot_sac_list.html", {"records": records})
 
 
-import csv
-from django.http import HttpResponse
-from django.contrib.admin.views.decorators import staff_member_required
-from .models import StaffTimeUpdate
 
 @staff_member_required
 def export_staff_updates_csv(request):
@@ -1799,10 +1596,6 @@ def punch_out(request):
 
 
 
-from datetime import timedelta
-from django.utils import timezone
-from django.contrib.auth.decorators import login_required, user_passes_test
-from django.shortcuts import render
 
 @login_required
 @user_passes_test(lambda u: u.role == "cluster_manager")
@@ -1908,6 +1701,7 @@ def raise_quality_feedback(request):
 
             feedback.emp_id = staff.employee_id
             feedback.emp_name = staff.username
+            feedback.raised_by = user
 
             if staff.location:
                 feedback.location = staff.location.code
@@ -1938,6 +1732,27 @@ def raise_quality_feedback(request):
             "form": form
         }
     )
+
+
+@login_required
+@user_passes_test(is_admin)
+def quality_feedback_analytics(request):
+    """Show admin-only adoption metrics for the Quality Feedback feature."""
+    today = timezone.localdate()
+    month_start = today.replace(day=1)
+    feedbacks = QualityFeedback.objects.all()
+    users_with_feedback = (
+        CustomUser.objects.filter(raised_quality_feedback__isnull=False)
+        .annotate(feedback_count=Count("raised_quality_feedback"))
+        .order_by("-feedback_count", "username")
+    )
+
+    return render(request, "quality_feedback_analytics.html", {
+        "total_feedback": feedbacks.count(),
+        "feedback_this_month": feedbacks.filter(created_at__date__gte=month_start).count(),
+        "unique_raisers": users_with_feedback.count(),
+        "user_usage": users_with_feedback,
+    })
 
 
 # ======================================================

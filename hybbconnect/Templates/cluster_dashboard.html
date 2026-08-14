@@ -1,192 +1,87 @@
 {% extends "base.html" %}
+{% load static %}
+
+{% block title %}Cluster Manager Dashboard{% endblock %}
+
 {% block content %}
+<div class="cluster-dashboard">
+    <aside class="cluster-sidebar">
+        <div class="cluster-brand">
+            <img src="{% static 'images/academy_logo.png' %}" alt="BigBites Academy Logo">
+            <span>HybbConnect</span>
+        </div>
 
-<div class="d-flex">
-  <!-- 🧭 Sidebar -->
-  <div class="sidebar p-4 shadow-sm">
-      <h4 class="text-center mb-4 fw-bold text-white">HybbConnect</h4>
+        <p class="nav-caption">CLUSTER MANAGEMENT</p>
+        <nav class="cluster-nav">
+            <a class="active" href="{% url 'cluster_dashboard' %}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+            <a href="{% url 'raise_staff_log' %}"><i class="bi bi-journal-plus"></i> Raise Staff Log</a>
+            <a href="{% url 'raise_quality_feedback' %}"><i class="bi bi-clipboard-plus"></i> Quality Feedback</a>
+            <a href="{% url 'view_quality_feedback' %}"><i class="bi bi-clipboard-check"></i> View Feedback</a>
+            <a href="{% url 'view_cluster_tickets' %}"><i class="bi bi-ticket-detailed"></i> Cluster Tickets</a>
+            <a href="{% url 'iconnect_form' %}"><i class="bi bi-envelope-paper"></i> Raise iConnect</a>
+            <a href="{% url 'cluster_ot_sac_list' %}"><i class="bi bi-clock-history"></i> OT / SAC Off Records</a>
+            <a href="{% url 'cluster_attendance_report' %}"><i class="bi bi-calendar-check"></i> Attendance Report</a>
+            <a href="{% url 'view_order_photos' %}"><i class="bi bi-images"></i> Order Photos</a>
+        </nav>
 
-      <a href="{% url 'cluster_dashboard' %}" class="active">🏠 Dashboard</a>
-      <a href="{% url 'raise_staff_log' %}">🧾 Raise Staff Log</a>
-      <a href="{% url 'iconnect_form' %}">📝 Raise iConnect</a>
-      <a href="{% url 'cluster_ot_sac_list' %}">OT / SAC OFF Records</a>
-      <a href="{% url 'view_cluster_tickets' %}">🎟️ View Cluster Tickets</a>
-      <a href="{% url 'raise_quality_feedback' %}" class="nav-link text-white">📝 Quality Feedback</a>
-      <a href="{% url 'view_quality_feedback' %}" class="btn btn-danger"><i class="fas fa-clipboard-check"></i> View Quality Feedback</a>
-            <!-- ⭐ NEW MENU ITEM ADDED HERE -->
-      <a href="{% url 'view_order_photos' %}">📸 View Order Photos</a>
-      <a href="{% url 'logout' %}">🚪 Logout</a>
-      <a href="{% url 'cluster_attendance_report' %}" class="btn btn-primary btn-sm">View Attendance Report
-</a>
-  </div>
+        <div class="cluster-sidebar-footer">
+            <a href="{% url 'change_password' %}"><i class="bi bi-key"></i> Change Password</a>
+            <a href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a>
+        </div>
+    </aside>
 
-  <!-- 📊 Main Dashboard -->
-  <div class="main-content flex-grow-1 p-4">
-    <!-- Header -->
-    <div class="text-center mb-5">
-        <h2 class="fw-bold text-teal">Cluster Manager Dashboard</h2>
-        <p class="text-muted">Monitor your cluster, manage staff, and view kitchen activity.</p>
-    </div>
+    <main class="cluster-main">
+        <section class="cluster-welcome">
+            <div class="welcome-copy">
+                <p class="eyebrow">CLUSTER MANAGER</p>
+                <h1>Welcome, {{ request.user.first_name|default:request.user.username }}</h1>
+                <p>Keep track of locations, people, tickets, and kitchen activity across your cluster.</p>
+            </div>
+            <div class="welcome-badge"><i class="bi bi-diagram-3"></i><span>{{ assigned_locations|length }}<small>assigned locations</small></span></div>
+        </section>
 
-    <!-- Dashboard Cards -->
-    <div class="row g-4">
+        <section class="cluster-actions" aria-label="Quick actions">
+            <a href="{% url 'raise_staff_log' %}"><i class="bi bi-journal-plus"></i><span>Raise staff log<small>Record an update</small></span></a>
+            <a href="{% url 'raise_quality_feedback' %}"><i class="bi bi-clipboard-plus"></i><span>Quality feedback<small>Recognise or address quality</small></span></a>
+            <a href="{% url 'view_cluster_tickets' %}"><i class="bi bi-ticket-perforated"></i><span>View tickets<small>Review cluster requests</small></span></a>
+        </section>
 
-      <!-- Kitchen Managers -->
-      <div class="col-md-3">
-          <a href="{% url 'view_kitchen_managers' %}" class="text-decoration-none">
-              <div class="card slicer-card h-100 text-center shadow-sm">
-                  <div class="card-body">
-                      <div class="display-5 text-teal mb-3">👨‍🍳</div>
-                      <h5 class="fw-bold text-dark">Kitchen Managers</h5>
-                      <p class="text-muted small mb-0">
-                          {% if kitchen_managers %}
-                              {{ kitchen_managers|length }} active
-                          {% else %}
-                              No data
-                          {% endif %}
-                      </p>
-                  </div>
-              </div>
-          </a>
-      </div>
+        <section class="metric-grid">
+            <a href="{% url 'view_kitchen_managers' %}" class="metric-card"><div class="metric-icon green"><i class="bi bi-person-workspace"></i></div><div><span>Kitchen managers</span><strong>{{ kitchen_managers|length }}</strong><small>in assigned locations</small></div><i class="bi bi-arrow-up-right metric-arrow"></i></a>
+            <a href="{% url 'view_kitchen_staff' %}" class="metric-card"><div class="metric-icon yellow"><i class="bi bi-people"></i></div><div><span>Kitchen staff</span><strong>{{ kitchen_staff|length }}</strong><small>team members</small></div><i class="bi bi-arrow-up-right metric-arrow"></i></a>
+            <a href="{% url 'view_kitchen_logs' %}" class="metric-card"><div class="metric-icon green"><i class="bi bi-journal-text"></i></div><div><span>Recent logs</span><strong>{{ kitchen_logs|length }}</strong><small>latest activity</small></div><i class="bi bi-arrow-up-right metric-arrow"></i></a>
+            <a href="{% url 'view_cluster_tickets' %}" class="metric-card"><div class="metric-icon yellow"><i class="bi bi-ticket-detailed"></i></div><div><span>Cluster tickets</span><strong>{{ tickets|length }}</strong><small>all ticket statuses</small></div><i class="bi bi-arrow-up-right metric-arrow"></i></a>
+        </section>
 
-      <!-- Kitchen Staff -->
-      <div class="col-md-3">
-          <a href="{% url 'view_kitchen_staff' %}" class="text-decoration-none">
-              <div class="card slicer-card h-100 text-center shadow-sm">
-                  <div class="card-body">
-                      <div class="display-5 text-teal mb-3">👩‍🍳</div>
-                      <h5 class="fw-bold text-dark">Kitchen Staff</h5>
-                      <p class="text-muted small mb-0">
-                          {% if kitchen_staff %}
-                              {{ kitchen_staff|length }} total
-                          {% else %}
-                              No data
-                          {% endif %}
-                      </p>
-                  </div>
-              </div>
-          </a>
-      </div>
+        <section class="row g-4">
+            <div class="col-xl-8">
+                <article class="cluster-card h-100">
+                    <div class="section-heading"><div><h2>Recent kitchen logs</h2><p>Latest entries from your assigned locations</p></div><a class="btn btn-outline-success btn-sm" href="{% url 'view_kitchen_logs' %}">View all</a></div>
+                    {% if kitchen_logs %}
+                        <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Date</th><th>Staff member</th><th>Category</th><th>Remarks</th><th>Status</th></tr></thead><tbody>
+                            {% for log in kitchen_logs %}<tr><td>{{ log.log_date|date:"d M Y" }}</td><td class="fw-semibold">{{ log.emp_name }} <small class="text-muted">{{ log.emp_id }}</small></td><td>{{ log.category }}</td><td>{{ log.remarks|default:"—"|truncatechars:70 }}</td><td>{% if log.is_acknowledged %}<span class="status-tag status-done">Acknowledged</span>{% else %}<span class="status-tag status-pending">Pending</span>{% endif %}</td></tr>{% endfor %}
+                        </tbody></table></div>
+                    {% else %}
+                        <div class="empty-state"><i class="bi bi-journal-x"></i><p>No kitchen logs have been recorded yet.</p></div>
+                    {% endif %}
+                </article>
+            </div>
 
-      <!-- Kitchen Logs -->
-      <div class="col-md-3">
-          <a href="{% url 'view_kitchen_logs' %}" class="text-decoration-none">
-              <div class="card slicer-card h-100 text-center shadow-sm">
-                  <div class="card-body">
-                      <div class="display-5 text-teal mb-3">📋</div>
-                      <h5 class="fw-bold text-dark">Recent Kitchen Logs</h5>
-                      <p class="text-muted small mb-0">
-                          {% if kitchen_logs %}
-                              {{ kitchen_logs|length }} entries
-                          {% else %}
-                              No logs yet
-                          {% endif %}
-                      </p>
-                  </div>
-              </div>
-          </a>
-      </div>
-
-      <!-- Raise iConnect -->
-      <div class="col-md-3">
-          <a href="{% url 'iconnect_form' %}" class="text-decoration-none">
-              <div class="card slicer-card h-100 text-center shadow-sm">
-                  <div class="card-body">
-                      <div class="display-5 text-teal mb-3">📝</div>
-                      <h5 class="fw-bold text-dark">Raise iConnect</h5>
-                      <p class="text-muted small mb-0">Submit a new iConnect ticket</p>
-                  </div>
-              </div>
-          </a>
-      </div>
-    </div>
-
-    <!-- 📍 Assigned Locations -->
-    <div class="card mt-4 border-0 shadow-sm">
-      <div class="card-body">
-        <h5 class="text-teal mb-3">📍 Assigned Locations</h5>
-        {% if assigned_locations %}
-          <ul class="list-unstyled mb-0">
-            {% for loc in assigned_locations %}
-              <li><i class="bi bi-geo-alt text-teal me-2"></i>{{ loc.name }}</li>
-            {% endfor %}
-          </ul>
-        {% else %}
-          <p class="text-muted">No locations assigned.</p>
-        {% endif %}
-      </div>
-    </div>
-
-  </div>
+            <div class="col-xl-4">
+                <article class="cluster-card location-card h-100">
+                    <div class="section-heading"><div><h2>Assigned locations</h2><p>Your cluster coverage</p></div></div>
+                    {% if assigned_locations %}
+                        <ul class="location-list">{% for loc in assigned_locations %}<li><span class="location-icon"><i class="bi bi-geo-alt-fill"></i></span><span><strong>{{ loc.name }}</strong><small>{{ loc.code }}</small></span></li>{% endfor %}</ul>
+                    {% else %}
+                        <div class="empty-state"><i class="bi bi-geo-alt"></i><p>No locations are assigned yet.</p></div>
+                    {% endif %}
+                </article>
+            </div>
+        </section>
+    </main>
 </div>
 
-<!-- 🎨 Styles -->
 <style>
-  body {
-      background-color: #f8f9fa;
-  }
-
-  .text-teal {
-      color: #009688;
-  }
-
-  .btn-teal {
-      background-color: #20c997;
-      border: none;
-  }
-
-  .btn-teal:hover {
-      background-color: #17a589;
-  }
-
-  /* Sidebar Styling */
-  .sidebar {
-      width: 240px;
-      background-color: #009688;
-      min-height: 100vh;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      position: fixed;
-  }
-
-  .sidebar a {
-      color: #e0f2f1;
-      text-decoration: none;
-      padding: 12px 18px;
-      border-radius: 8px;
-      margin-bottom: 8px;
-      transition: background 0.3s ease;
-      display: block;
-      font-weight: 500;
-  }
-
-  .sidebar a:hover, .sidebar a.active {
-      background-color: #00796b;
-      color: #ffffff;
-  }
-
-  .main-content {
-      margin-left: 260px;
-  }
-
-  .slicer-card {
-      border-radius: 15px;
-      transition: all 0.3s ease;
-      cursor: pointer;
-  }
-
-  .slicer-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
-      background-color: #e6f8f3;
-  }
-
-  table thead th {
-      font-weight: 600;
-      color: #555;
-  }
+    .cluster-dashboard{display:flex;min-height:calc(100vh - 76px);background:#f7faf5}.cluster-sidebar{width:265px;flex:none;background:linear-gradient(180deg,#174c36,#0f3728);padding:24px 16px;color:#eaf3df;display:flex;flex-direction:column}.cluster-brand{display:flex;align-items:center;gap:11px;color:#fff;font-weight:700;font-size:1.15rem;padding:0 10px 30px}.cluster-brand img{width:47px;max-height:47px;object-fit:contain}.nav-caption{color:#b3ca9f;font-size:.7rem;letter-spacing:.11em;margin:0 12px 8px}.cluster-nav a,.cluster-sidebar-footer a{display:block;color:#e1edda;text-decoration:none;padding:11px 12px;border-radius:8px;margin:3px 0;font-size:.92rem}.cluster-nav a i,.cluster-sidebar-footer a i{width:23px;color:#e9c84c}.cluster-nav a:hover,.cluster-nav a.active,.cluster-sidebar-footer a:hover{background:#2d6948;color:#fff}.cluster-nav a.active{box-shadow:inset 3px 0 #f1cc45}.cluster-sidebar-footer{margin-top:auto;border-top:1px solid rgba(224,237,207,.2);padding-top:12px}.cluster-main{min-width:0;flex:1;padding:30px}.cluster-welcome{background:linear-gradient(115deg,#1d6746,#348654);border-radius:18px;color:#fff;padding:30px 34px;display:flex;justify-content:space-between;align-items:center;gap:20px;box-shadow:0 10px 24px rgba(30,100,67,.18)}.eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.13em;color:#f6d95e;margin:0 0 7px}.cluster-welcome h1{font-size:1.85rem;margin:0 0 8px}.cluster-welcome p:not(.eyebrow){margin:0;color:#e4f1e5}.welcome-badge{display:flex;align-items:center;gap:11px;padding:13px 17px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);border-radius:12px}.welcome-badge i{font-size:1.6rem;color:#f6d95e}.welcome-badge span{font-size:1.45rem;font-weight:700;line-height:1}.welcome-badge small{display:block;font-size:.7rem;font-weight:400;color:#e2f0df;margin-top:4px}.cluster-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}.cluster-actions a{display:flex;align-items:center;gap:13px;color:#244a36;text-decoration:none;background:#fff;border:1px solid #e0eadb;border-radius:12px;padding:16px;box-shadow:0 3px 10px rgba(32,82,52,.05)}.cluster-actions a:hover{border-color:#e4bb2e;transform:translateY(-1px)}.cluster-actions i{color:#237046;font-size:1.45rem}.cluster-actions span{font-weight:650}.cluster-actions small{display:block;font-size:.78rem;color:#748576;font-weight:400;margin-top:2px}.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}.metric-card{position:relative;display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e0eadb;border-radius:13px;padding:17px;text-decoration:none;color:#254632;box-shadow:0 3px 10px rgba(32,82,52,.04)}.metric-card:hover{box-shadow:0 8px 18px rgba(32,82,52,.1);color:#254632}.metric-icon{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;font-size:1.2rem}.metric-icon.green{color:#167244;background:#dcf0df}.metric-icon.yellow{color:#8d6710;background:#fff3bf}.metric-card span,.metric-card small{display:block;font-size:.76rem;color:#778779}.metric-card strong{font-size:1.45rem;line-height:1.2}.metric-arrow{position:absolute;right:12px;top:12px;color:#9aae9a}.cluster-card{background:#fff;border:1px solid #e0eadb;border-radius:14px;padding:22px;box-shadow:0 3px 12px rgba(32,82,52,.04)}.section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:17px}.section-heading h2{margin:0;color:#204632;font-weight:700;font-size:1.1rem}.section-heading p{margin:4px 0 0;color:#7b8c7c;font-size:.84rem}.table{font-size:.88rem}.table thead th{background:#f5f9ef;border-top:0;color:#697a6c;font-size:.73rem;text-transform:uppercase;letter-spacing:.04em}.status-tag{display:inline-block;padding:4px 9px;border-radius:99px;font-size:.74rem;font-weight:650}.status-done{background:#dcf3df;color:#237242}.status-pending{background:#fff1b9;color:#866313}.location-list{list-style:none;padding:0;margin:0}.location-list li{display:flex;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid #edf2e9}.location-list li:last-child{border-bottom:0}.location-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;color:#22814c;background:#e1f2df}.location-list strong,.location-list small{display:block}.location-list strong{font-size:.9rem;color:#31533d}.location-list small{font-size:.78rem;color:#809080;margin-top:2px}.empty-state{text-align:center;color:#829283;padding:32px 12px}.empty-state i{font-size:2rem;display:block;color:#caa22a;margin-bottom:8px}@media(max-width:1100px){.metric-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:767px){.cluster-dashboard{display:block}.cluster-sidebar{width:100%;min-height:auto}.cluster-nav{display:grid;grid-template-columns:1fr 1fr;gap:2px}.cluster-sidebar-footer{display:flex;gap:8px;margin-top:14px}.cluster-sidebar-footer a{margin:0}.cluster-main{padding:18px}.cluster-welcome{padding:24px;align-items:flex-start;flex-direction:column}.cluster-actions{grid-template-columns:1fr}.metric-grid{grid-template-columns:1fr 1fr}.table{min-width:650px}}@media(max-width:420px){.cluster-nav{grid-template-columns:1fr}.metric-grid{grid-template-columns:1fr}}
 </style>
-
 {% endblock %}

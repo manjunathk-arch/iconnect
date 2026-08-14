@@ -1,223 +1,115 @@
 {% extends "base.html" %}
 {% load static %}
 
+{% block title %}Kitchen Manager Dashboard{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-
-        <!-- Sidebar -->
-        <div class="col-md-2 sidebar bg-dark text-white p-0" style="min-height: 100vh;">
-            
-            <!-- Logo Top Center -->
-            <div class="text-center py-3">
-                <img src="{% static 'images/academy_logo.png' %}" 
-                     alt="BigBites Academy Logo" 
-                     class="img-fluid" 
-                     style="width: 180px;">
-                <h5 class="mt-2">HybbConnect</h5>
-            </div>
-
-            <!-- Navigation Links -->
-            <nav class="nav flex-column px-3">
-                <a href="{% url 'manager_dashboard' %}" class="nav-link text-white">🏠 Dashboard</a>
-                <a href="{% url 'raise_staff_log' %}" class="nav-link text-white">📝 Raise Staff Log</a>
-                <a href="{% url 'view_kitchen_logs' %}" class="nav-link text-white">📝 Recent Kitchen Logs</a>
-                <a href="{% url 'raise_quality_feedback' %}" class="nav-link text-white">📝 Quality Feedback</a>
-                <a href="{% url 'view_quality_feedback' %}" class="btn btn-danger"><i class="fas fa-clipboard-check"></i> View Quality Feedback</a>
-                <a href="{% url 'iconnect_form' %}" class="btn btn-primary mt-3 w-100 text-start">
-                <i class="bi bi-envelope-paper"></i> Raise IConnect Ticket
-                </a>
-
-                <a href="{% url 'logout' %}" class="nav-link text-white mt-2">🚪 Logout</a>
-            </nav>
-
+<div class="manager-dashboard">
+    <aside class="manager-sidebar">
+        <div class="brand">
+            <img src="{% static 'images/academy_logo.png' %}" alt="BigBites Academy Logo">
+            <span>HybbConnect</span>
         </div>
 
-        <!-- Main Content -->
-        <div class="col-md-10 p-0">
-            <div class="header d-flex justify-content-between align-items-center p-3 mb-4 bg-white shadow-sm">
-                <h4>Welcome, {{ request.user.first_name }} 👋</h4>
-                <div>
-                    <strong>Employee ID:</strong> {{ request.user.employee_id|default:"N/A" }} |
-                    <strong>Role:</strong> {{ request.user.get_role_display|default:"N/A" }}
-                </div>
+        <p class="sidebar-label">MANAGER MENU</p>
+        <nav class="manager-nav">
+            <a class="active" href="{% url 'manager_dashboard' %}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+            <a href="{% url 'raise_staff_log' %}"><i class="bi bi-journal-plus"></i> Raise Staff Log</a>
+            <a href="{% url 'view_kitchen_logs' %}"><i class="bi bi-journal-text"></i> Kitchen Logs</a>
+            <a href="{% url 'raise_quality_feedback' %}"><i class="bi bi-clipboard-plus"></i> Quality Feedback</a>
+            <a href="{% url 'view_quality_feedback' %}"><i class="bi bi-clipboard-check"></i> View Feedback</a>
+            <a href="{% url 'iconnect_form' %}"><i class="bi bi-envelope-paper"></i> Raise iConnect Ticket</a>
+        </nav>
+
+        <div class="sidebar-bottom">
+            <a href="{% url 'change_password' %}"><i class="bi bi-key"></i> Change Password</a>
+            <a href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a>
+        </div>
+    </aside>
+
+    <main class="manager-main">
+        <section class="welcome-panel">
+            <div>
+                <p class="eyebrow">KITCHEN MANAGER</p>
+                <h1>Welcome, {{ request.user.first_name|default:request.user.username }}</h1>
+                <p class="mb-0">Manage your team's tickets, logs, and daily attendance in one place.</p>
             </div>
+            <div class="user-meta">
+                <span><i class="bi bi-person-badge"></i> {{ request.user.employee_id|default:"N/A" }}</span>
+                <span><i class="bi bi-geo-alt"></i> {{ request.user.location.name|default:"No location" }}</span>
+            </div>
+        </section>
 
-            <div class="content px-4">
-                {% if messages %}
-                    {% for message in messages %}
-                        <div class="alert alert-info">{{ message }}</div>
-                    {% endfor %}
-                {% endif %}
+        <section class="quick-actions" aria-label="Quick actions">
+            <a href="{% url 'raise_staff_log' %}" class="quick-action"><i class="bi bi-journal-plus"></i><span>Raise Staff Log<small>Record a staff update</small></span></a>
+            <a href="{% url 'raise_quality_feedback' %}" class="quick-action"><i class="bi bi-clipboard-plus"></i><span>Quality Feedback<small>Share staff feedback</small></span></a>
+            <a href="{% url 'iconnect_form' %}" class="quick-action"><i class="bi bi-send"></i><span>iConnect Ticket<small>Get help from a team</small></span></a>
+        </section>
 
-                <!-- Assigned Tickets -->
-                <div class="card shadow-sm mb-4 p-4">
-                    <h5 class="fw-semibold mb-3">Assigned Tickets</h5>
+        <section class="row g-4">
+            <div class="col-xl-8">
+                <article class="dashboard-card h-100">
+                    <div class="card-heading">
+                        <div><h2>Assigned Tickets</h2><p>{{ tickets|length }} ticket{{ tickets|length|pluralize }} assigned to you</p></div>
+                    </div>
                     {% if tickets %}
                         <div class="table-responsive">
-                            <table class="table table-striped align-middle">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Concern</th>
-                                        <th>Status</th>
-                                        <th>Location</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
+                            <table class="table align-middle mb-0">
+                                <thead><tr><th>Ticket</th><th>Concern</th><th>Location</th><th>Status</th><th></th></tr></thead>
                                 <tbody>
                                     {% for ticket in tickets %}
-                                        <tr>
-                                            <td>{{ ticket.id }}</td>
-                                            <td>{{ ticket.concern }}</td>
-                                            <td>
-                                                <span class="badge bg-{% if ticket.status == 'Resolved' %}success{% elif ticket.status == 'Pending' %}warning{% else %}info{% endif %}">
-                                                    {{ ticket.status }}
-                                                </span>
-                                            </td>
-                                            <td>{{ ticket.location }}</td>
-                                            <td>
-                                                {% if ticket.status != "Resolved" %}
-                                                    <a href="{% url 'resolve_ticket' ticket.id %}" class="btn btn-success btn-sm">Mark Resolved</a>
-                                                {% else %}
-                                                    <span class="text-muted small">Awaiting Staff Confirmation</span>
-                                                {% endif %}
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    {% else %}
-                        <p class="text-muted">No tickets assigned to you.</p>
-                    {% endif %}
-                </div>
-
-                <!-- Staff Logs Table -->
-                <div class="card shadow-sm p-4 mb-5">
-                    <h5 class="fw-semibold mb-3">Staff Logs ({{ request.user.location.name|default:"N/A" }})</h5>
-                    {% if staff_logs %}
-                        <div class="table-responsive">
-                            <table class="table table-bordered align-middle">
-                                <thead class="table-light">
                                     <tr>
-                                        <th>Log Date</th>
-                                        <th>Staff</th>
-                                        <th>Category</th>
-                                        <th>Remarks</th>
-                                        <th>Date Created</th>
-                                        <th>Status</th>
+                                        <td class="fw-semibold">{{ ticket.ticket_number|default:ticket.id }}</td>
+                                        <td>{{ ticket.concern }}</td>
+                                        <td>{{ ticket.location|default:"—" }}</td>
+                                        <td><span class="status status-{{ ticket.status|slugify }}">{{ ticket.status }}</span></td>
+                                        <td class="text-end">
+                                            {% if ticket.status != "Resolved" and ticket.status != "Closed" %}
+                                                <a href="{% url 'resolve_ticket' ticket.id %}" class="btn btn-sm btn-success">Mark resolved</a>
+                                            {% else %}
+                                                <span class="small text-muted">Awaiting confirmation</span>
+                                            {% endif %}
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    {% for log in staff_logs %}
-                                        <tr>
-                                            <td>{{ log.log_date|date:"d M Y" }}</td>
-                                            <td>{{ log.emp_name }} ({{ log.emp_id }})</td>
-                                            <td>{{ log.category }}</td>
-                                            <td>{{ log.remarks|default:"—" }}</td>
-                                            <td>{{ log.created_at|date:"d M Y, H:i" }}</td>
-                                            <td>
-                                                {% if log.is_acknowledged %}
-                                                    <span class="badge bg-success">✅ Staff Acknowledged</span>
-                                                {% else %}
-                                                    <span class="badge bg-warning text-dark">⏳ Pending</span>
-                                                {% endif %}
-                                            </td>
-                                        </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
                     {% else %}
-                        <p class="text-muted">No staff logs found for this location.</p>
+                        <div class="empty-state"><i class="bi bi-inbox"></i><p>No tickets are assigned to you.</p></div>
                     {% endif %}
-                </div>
+                </article>
             </div>
-        </div>
-    </div>
 
-
-
-<div class="card p-3 mb-4">
-    <h5 class="text-center">Daily Attendance</h5>
-
-    {% if not today_attendance or not today_attendance.punch_in %}
-        <a href="{% url 'punch_in' %}" class="btn btn-success w-100 mb-2">
-            Punch In
-        </a>
-    {% else %}
-        <button class="btn btn-secondary w-100 mb-2" disabled>
-            Punched In at {{ today_attendance.punch_in|time:"H:i" }}
-        </button>
-    {% endif %}
-
-    {% if today_attendance and today_attendance.punch_in and not today_attendance.punch_out %}
-        <a href="{% url 'punch_out' %}" class="btn btn-danger w-100">
-            Punch Out
-        </a>
-    {% else %}
-        <button class="btn btn-secondary w-100" disabled>
-            Punch Out
-        </button>
-    {% endif %}
-
-    <div class="card p-3 mt-4">
-    <h5 class="text-center">Last 7 Days Attendance</h5>
-
-    <table class="table table-bordered table-sm text-center">
-        <thead class="table-light">
-            <tr>
-                <th>Date</th>
-                <th>Punch In</th>
-                <th>Punch Out</th>
-                <th>Working Hours</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for att in last_7_days_attendance %}
-            <tr>
-                <td>{{ att.date|date:"d M Y" }}</td>
-                <td>{{ att.punch_in|time:"H:i"|default:"-" }}</td>
-                <td>{{ att.punch_out|time:"H:i"|default:"-" }}</td>
-                <td>
-                    {% if att.working_hours %}
-                        {{ att.working_hours }}
+            <div class="col-xl-4">
+                <article class="dashboard-card attendance-card h-100">
+                    <div class="card-heading"><div><h2>Daily Attendance</h2><p>{% now "d M Y" %}</p></div></div>
+                    {% if not today_attendance or not today_attendance.punch_in %}
+                        <a href="{% url 'punch_in' %}" class="btn btn-success w-100 mb-2"><i class="bi bi-box-arrow-in-right"></i> Punch In</a>
                     {% else %}
-                        -
+                        <div class="attendance-time"><span>Punched in</span><strong>{{ today_attendance.punch_in|time:"H:i" }}</strong></div>
                     {% endif %}
-                </td>
-            </tr>
-            {% empty %}
-            <tr>
-                <td colspan="4">No attendance records</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+                    {% if today_attendance and today_attendance.punch_in and not today_attendance.punch_out %}
+                        <a href="{% url 'punch_out' %}" class="btn btn-outline-danger w-100"><i class="bi bi-box-arrow-right"></i> Punch Out</a>
+                    {% elif today_attendance and today_attendance.punch_out %}
+                        <div class="attendance-time mt-2"><span>Punched out</span><strong>{{ today_attendance.punch_out|time:"H:i" }}</strong></div>
+                    {% endif %}
+                </article>
+            </div>
+        </section>
+
+        <section class="dashboard-card mt-4">
+            <div class="card-heading"><div><h2>Recent Staff Logs</h2><p>{{ request.user.location.name|default:"Your location" }}</p></div><a href="{% url 'view_kitchen_logs' %}" class="btn btn-outline-primary btn-sm">View all logs</a></div>
+            {% if staff_logs %}
+                <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Date</th><th>Staff member</th><th>Category</th><th>Remarks</th><th>Status</th></tr></thead><tbody>
+                    {% for log in staff_logs %}<tr><td>{{ log.log_date|date:"d M Y" }}</td><td class="fw-semibold">{{ log.emp_name }} <small class="text-muted">{{ log.emp_id }}</small></td><td>{{ log.category }}</td><td>{{ log.remarks|default:"—"|truncatechars:80 }}</td><td>{% if log.is_acknowledged %}<span class="status status-resolved">Acknowledged</span>{% else %}<span class="status status-pending">Pending</span>{% endif %}</td></tr>{% endfor %}
+                </tbody></table></div>
+            {% else %}<div class="empty-state"><i class="bi bi-journal-x"></i><p>No staff logs found for this location.</p></div>{% endif %}
+        </section>
+    </main>
 </div>
 
-
 <style>
-    /* Sidebar styling */
-    .sidebar .nav-link {
-        padding: 12px 20px;
-        font-weight: 500;
-        border-radius: 6px;
-        margin-bottom: 4px;
-        transition: background-color 0.3s ease;
-    }
-
-    .sidebar .nav-link:hover {
-        background-color: #495057;
-        text-decoration: none;
-    }
-
-    @media (max-width: 768px) {
-        .sidebar {
-            position: relative;
-            height: auto;
-        }
-    }
+    .manager-dashboard{display:flex;min-height:calc(100vh - 76px);background:#f5f7fb}.manager-sidebar{width:260px;flex:none;background:#17223b;color:#d9e2f3;padding:24px 16px;display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:10px;color:#fff;font-weight:700;font-size:1.15rem;padding:0 10px 30px}.brand img{width:48px;max-height:48px;object-fit:contain}.sidebar-label{font-size:.7rem;letter-spacing:.12em;color:#8493af;padding:0 12px}.manager-nav a,.sidebar-bottom a{display:block;color:#d9e2f3;text-decoration:none;padding:11px 12px;border-radius:8px;margin:4px 0}.manager-nav a:hover,.manager-nav a.active,.sidebar-bottom a:hover{background:#273858;color:#fff}.manager-nav i,.sidebar-bottom i{width:23px}.sidebar-bottom{margin-top:auto;border-top:1px solid #30405d;padding-top:12px}.manager-main{flex:1;min-width:0;padding:30px}.welcome-panel{background:linear-gradient(120deg,#1e3a67,#286a85);color:#fff;padding:28px 32px;border-radius:16px;display:flex;align-items:center;justify-content:space-between;gap:20px}.eyebrow{font-size:.75rem;letter-spacing:.12em;font-weight:700;opacity:.75;margin-bottom:6px}.welcome-panel h1{font-size:1.8rem;margin-bottom:8px}.user-meta{display:flex;flex-direction:column;gap:8px;font-size:.9rem;white-space:nowrap}.quick-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}.quick-action{display:flex;align-items:center;gap:13px;text-decoration:none;color:#273858;background:#fff;border:1px solid #e5eaf2;border-radius:12px;padding:17px;box-shadow:0 3px 10px rgba(23,34,59,.04)}.quick-action:hover{border-color:#4b83ad;transform:translateY(-1px)}.quick-action>i{font-size:1.4rem;color:#216b9a}.quick-action span{font-weight:600}.quick-action small{display:block;color:#718096;font-weight:400;font-size:.78rem;margin-top:2px}.dashboard-card{background:#fff;border:1px solid #e5eaf2;border-radius:14px;padding:22px;box-shadow:0 3px 12px rgba(23,34,59,.04)}.card-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:18px}.card-heading h2{font-size:1.08rem;font-weight:700;color:#1d2a44;margin:0}.card-heading p{margin:4px 0 0;color:#718096;font-size:.85rem}.table{font-size:.9rem}.table thead th{color:#6d7d96;font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;border-top:0;background:#f8fafc}.status{display:inline-block;padding:4px 9px;border-radius:99px;font-size:.75rem;font-weight:600;background:#e4edf9;color:#295c90}.status-resolved{background:#dcf5e7;color:#187546}.status-pending{background:#fff0c9;color:#916400}.status-closed{background:#e7eaef;color:#505b6b}.attendance-time{display:flex;justify-content:space-between;background:#f5f8fc;padding:12px;border-radius:8px;color:#65738a}.attendance-time strong{color:#273858}.empty-state{text-align:center;color:#8a97a9;padding:32px 12px}.empty-state i{font-size:2rem;display:block;margin-bottom:8px}@media(max-width:991px){.manager-sidebar{width:220px}.quick-actions{grid-template-columns:1fr}}@media(max-width:767px){.manager-dashboard{display:block}.manager-sidebar{width:100%;min-height:auto}.manager-nav{display:grid;grid-template-columns:1fr 1fr;gap:2px}.sidebar-bottom{margin-top:16px;display:flex;gap:8px}.sidebar-bottom a{margin:0}.manager-main{padding:18px}.welcome-panel{padding:22px;align-items:flex-start;flex-direction:column}.quick-actions{grid-template-columns:1fr}.table{min-width:650px}}
 </style>
 {% endblock %}

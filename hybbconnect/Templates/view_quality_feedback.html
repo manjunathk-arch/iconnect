@@ -59,6 +59,11 @@
                 <!-- Admin CSV -->
                 {% if request.user.role == "admin" %}
 
+                    <a href="{% url 'quality_feedback_analytics' %}"
+                       class="btn btn-light btn-sm">
+                        Usage Analytics
+                    </a>
+
                     <a href="{% url 'export_quality_feedback_csv' %}"
                        class="btn btn-warning btn-sm">
 
