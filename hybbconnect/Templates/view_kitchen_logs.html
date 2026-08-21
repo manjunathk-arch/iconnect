@@ -3,33 +3,68 @@
 
 <div class="container-fluid py-4">
 
-    <!-- ===== Header ===== -->
+    <!-- =========================================================
+         HEADER
+    ========================================================== -->
     <div class="card border-0 shadow-lg rounded-4 overflow-hidden mb-4">
 
         <div class="header-bar p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
 
             <div>
-                <h2 class="mb-1 fw-bold text-white">📋 Recent Kitchen Logs</h2>
-                <p class="mb-0 text-light">Track and review kitchen staff activity logs.</p>
+                <h2 class="mb-1 fw-bold text-white">
+                    📋 Recent Kitchen Logs
+                </h2>
+
+                <p class="mb-0 text-light">
+                    Track and review kitchen staff activity logs.
+                </p>
             </div>
 
+
+            <!-- Dashboard Button Based On Role -->
+
             {% if user.role == "kitchen_staff" %}
-                <a href="{% url 'staff_dashboard' %}" class="btn btn-yellow fw-bold">← Dashboard</a>
+
+                <a href="{% url 'staff_dashboard' %}"
+                   class="btn btn-yellow fw-bold">
+                    ← Dashboard
+                </a>
 
             {% elif user.role == "kitchen_manager" %}
-                <a href="{% url 'manager_dashboard' %}" class="btn btn-yellow fw-bold">← Dashboard</a>
+
+                <a href="{% url 'manager_dashboard' %}"
+                   class="btn btn-yellow fw-bold">
+                    ← Dashboard
+                </a>
 
             {% elif user.role == "cluster_manager" %}
-                <a href="{% url 'cluster_dashboard' %}" class="btn btn-yellow fw-bold">← Dashboard</a>
+
+                <a href="{% url 'cluster_dashboard' %}"
+                   class="btn btn-yellow fw-bold">
+                    ← Dashboard
+                </a>
 
             {% elif user.role == "owner" %}
-                <a href="{% url 'owner_dashboard' %}" class="btn btn-yellow fw-bold">← Dashboard</a>
+
+                <a href="{% url 'owner_dashboard' %}"
+                   class="btn btn-yellow fw-bold">
+                    ← Dashboard
+                </a>
 
             {% elif user.role == "admin" %}
-                <a href="{% url 'admin_dashboard' %}" class="btn btn-yellow fw-bold">← Dashboard</a>
+
+                <a href="{% url 'admin_dashboard' %}"
+                   class="btn btn-yellow fw-bold">
+                    ← Dashboard
+                </a>
 
             {% else %}
-                <a href="{% url 'dashboard' %}" class="btn btn-yellow fw-bold">← Back</a>
+
+                <a href="{% url 'dashboard' %}"
+                   class="btn btn-yellow fw-bold">
+                    ← Back
+                </a>
+
             {% endif %}
 
         </div>
@@ -37,18 +72,25 @@
     </div>
 
 
-
-    <!-- ===== Filter Card ===== -->
+    <!-- =========================================================
+         FILTER CARD
+    ========================================================== -->
 
     <div class="card border-0 shadow rounded-4 mb-4">
 
         <div class="card-body p-4">
 
-            <form method="get" class="row g-3 align-items-end">
+            <form method="get"
+                  class="row g-3 align-items-end">
+
+
+                <!-- Player Name -->
 
                 <div class="col-md-5">
 
-                    <label class="form-label fw-semibold text-green">Player Name</label>
+                    <label class="form-label fw-semibold text-green">
+                        Player Name
+                    </label>
 
                     <input
                         type="text"
@@ -60,9 +102,14 @@
 
                 </div>
 
+
+                <!-- Employee ID -->
+
                 <div class="col-md-5">
 
-                    <label class="form-label fw-semibold text-green">Employee ID</label>
+                    <label class="form-label fw-semibold text-green">
+                        Employee ID
+                    </label>
 
                     <input
                         type="text"
@@ -74,18 +121,32 @@
 
                 </div>
 
+
+                <!-- Filter -->
+
                 <div class="col-md-1 d-grid">
 
-                    <button type="submit" class="btn btn-green btn-lg rounded-3">
+                    <button
+                        type="submit"
+                        class="btn btn-green btn-lg rounded-3">
+
                         Filter
+
                     </button>
 
                 </div>
 
+
+                <!-- Reset -->
+
                 <div class="col-md-1 d-grid">
 
-                    <a href="{% url 'view_kitchen_logs' %}" class="btn btn-outline-secondary btn-lg rounded-3">
+                    <a
+                        href="{% url 'view_kitchen_logs' %}"
+                        class="btn btn-outline-secondary btn-lg rounded-3">
+
                         Reset
+
                     </a>
 
                 </div>
@@ -97,8 +158,9 @@
     </div>
 
 
-
-    <!-- ===== Table Card ===== -->
+    <!-- =========================================================
+         TABLE CARD
+    ========================================================== -->
 
     <div class="card border-0 shadow rounded-4 overflow-hidden">
 
@@ -108,20 +170,34 @@
 
             <table class="table align-middle mb-0">
 
+                <!-- TABLE HEADER -->
+
                 <thead class="table-header">
 
                     <tr>
+
                         <th>Created</th>
+
                         <th>Log Date</th>
+
                         <th>Player Name</th>
+
                         <th>Employee ID</th>
+
                         <th>Category</th>
+
                         <th>Remarks</th>
+
                         <th>Location</th>
+
                         <th>Status</th>
+
                     </tr>
 
                 </thead>
+
+
+                <!-- TABLE BODY -->
 
                 <tbody>
 
@@ -129,50 +205,214 @@
 
                     <tr>
 
+
+                        <!-- =================================================
+                             CREATED
+                        ================================================== -->
+
                         <td>
-                            <small class="text-muted">{{ log.created_at|date:"d M Y" }}</small><br>
-                            <strong>{{ log.created_at|date:"H:i" }}</strong>
+
+                            <small class="text-muted">
+                                {{ log.created_at|date:"d M Y" }}
+                            </small>
+
+                            <br>
+
+                            <strong>
+                                {{ log.created_at|date:"H:i" }}
+                            </strong>
+
                         </td>
 
-                        <td>{{ log.log_date|date:"d M Y" }}</td>
+
+                        <!-- =================================================
+                             LOG DATE
+                        ================================================== -->
+
+                        <td>
+
+                            {{ log.log_date|date:"d M Y" }}
+
+                        </td>
+
+
+                        <!-- =================================================
+                             PLAYER NAME
+                        ================================================== -->
 
                         <td>
 
                             {% if log.staff %}
-                                <strong>{{ log.staff.first_name }} {{ log.staff.last_name }}</strong>
+
+                                <strong>
+
+                                    {% if log.staff.get_full_name %}
+
+                                        {{ log.staff.get_full_name }}
+
+                                    {% elif log.emp_name %}
+
+                                        {{ log.emp_name }}
+
+                                    {% elif log.staff.username %}
+
+                                        {{ log.staff.username }}
+
+                                    {% elif log.staff.employee_id %}
+
+                                        {{ log.staff.employee_id }}
+
+                                    {% else %}
+
+                                        <span class="text-muted">
+                                            Name not available
+                                        </span>
+
+                                    {% endif %}
+
+                                </strong>
+
+                            {% elif log.emp_name %}
+
+                                <strong>
+                                    {{ log.emp_name }}
+                                </strong>
+
                             {% else %}
-                                <strong>{{ log.emp_name }}</strong>
+
+                                <span class="text-muted">
+                                    Name not available
+                                </span>
+
                             {% endif %}
 
                         </td>
 
-                        <td>
-                            <span class="badge bg-light text-dark border">{{ log.emp_id }}</span>
-                        </td>
 
-                        <td>
-                            <span class="badge category-badge">{{ log.category }}</span>
-                        </td>
+                        <!-- =================================================
+                             EMPLOYEE ID
+                        ================================================== -->
 
                         <td>
 
-                            <div class="remarks-box" title="{{ log.remarks }}">
-                                {{ log.remarks }}
-                            </div>
+                            {% if log.emp_id %}
+
+                                <span class="badge bg-light text-dark border">
+
+                                    {{ log.emp_id }}
+
+                                </span>
+
+                            {% elif log.staff and log.staff.employee_id %}
+
+                                <span class="badge bg-light text-dark border">
+
+                                    {{ log.staff.employee_id }}
+
+                                </span>
+
+                            {% else %}
+
+                                <span class="text-muted">
+                                    —
+                                </span>
+
+                            {% endif %}
 
                         </td>
 
-                        <td>{{ log.location }}</td>
+
+                        <!-- =================================================
+                             CATEGORY
+                        ================================================== -->
+
+                        <td>
+
+                            <span class="badge category-badge">
+
+                                {{ log.category }}
+
+                            </span>
+
+                        </td>
+
+
+                        <!-- =================================================
+                             REMARKS
+                        ================================================== -->
+
+                        <td>
+
+                            {% if log.remarks %}
+
+                                <div
+                                    class="remarks-box"
+                                    title="{{ log.remarks }}">
+
+                                    {{ log.remarks }}
+
+                                </div>
+
+                            {% else %}
+
+                                <span class="text-muted">
+                                    —
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <!-- =================================================
+                             LOCATION
+                        ================================================== -->
+
+                        <td>
+
+                            {% if log.location %}
+
+                                {{ log.location }}
+
+                            {% else %}
+
+                                <span class="text-muted">
+                                    —
+                                </span>
+
+                            {% endif %}
+
+                        </td>
+
+
+                        <!-- =================================================
+                             STATUS
+                        ================================================== -->
 
                         <td>
 
                             {% if log.is_acknowledged %}
-                                <span class="badge bg-success px-3 py-2">✔ Acknowledged</span>
+
+                                <span
+                                    class="badge bg-success px-3 py-2">
+
+                                    ✔ Acknowledged
+
+                                </span>
+
                             {% else %}
-                                <span class="badge bg-warning text-dark px-3 py-2">Pending</span>
+
+                                <span
+                                    class="badge bg-warning text-dark px-3 py-2">
+
+                                    Pending
+
+                                </span>
+
                             {% endif %}
 
                         </td>
+
 
                     </tr>
 
@@ -184,15 +424,26 @@
 
         </div>
 
+
+        <!-- =========================================================
+             NO DATA
+        ========================================================== -->
+
         {% else %}
 
         <div class="text-center py-5">
 
-            <div style="font-size:50px;">📄</div>
+            <div style="font-size:50px;">
+                📄
+            </div>
 
-            <h5 class="mt-3 text-muted">No Kitchen Logs Found</h5>
+            <h5 class="mt-3 text-muted">
+                No Kitchen Logs Found
+            </h5>
 
-            <p class="text-secondary mb-0">Logs will appear here once they are submitted.</p>
+            <p class="text-secondary mb-0">
+                Logs will appear here once they are submitted.
+            </p>
 
         </div>
 
@@ -203,151 +454,274 @@
 </div>
 
 
+<!-- =============================================================
+     CSS
+============================================================== -->
 
 <style>
 
-:root{
+:root {
 
-    --dark-green:#064E3B;
-    --green:#198754;
-    --light-green:#EAF7EE;
+    --dark-green: #064E3B;
 
-    --yellow:#F4C20D;
-    --yellow-dark:#D9A900;
+    --green: #198754;
+
+    --light-green: #EAF7EE;
+
+    --yellow: #F4C20D;
+
+    --yellow-dark: #D9A900;
+
 }
 
-/* Background */
 
-body{
-    background:#F5F8F5;
+/* =============================================================
+   BACKGROUND
+============================================================= */
+
+body {
+
+    background: #F5F8F5;
+
 }
 
-/* Header */
 
-.header-bar{
-    background:linear-gradient(135deg,var(--dark-green),var(--green));
+/* =============================================================
+   HEADER
+============================================================= */
+
+.header-bar {
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--dark-green),
+            var(--green)
+        );
+
 }
 
-/* Buttons */
 
-.btn-green{
+/* =============================================================
+   GREEN BUTTON
+============================================================= */
 
-    background:var(--green);
-    border:none;
-    color:white;
-    font-weight:600;
+.btn-green {
+
+    background: var(--green);
+
+    border: none;
+
+    color: white;
+
+    font-weight: 600;
+
 }
 
-.btn-green:hover{
 
-    background:#157347;
-    color:white;
+.btn-green:hover {
+
+    background: #157347;
+
+    color: white;
+
 }
 
-.btn-yellow{
 
-    background:var(--yellow);
-    color:#173B2B;
-    border:none;
-    font-weight:700;
+/* =============================================================
+   YELLOW BUTTON
+============================================================= */
+
+.btn-yellow {
+
+    background: var(--yellow);
+
+    color: #173B2B;
+
+    border: none;
+
+    font-weight: 700;
+
 }
 
-.btn-yellow:hover{
 
-    background:var(--yellow-dark);
-    color:white;
+.btn-yellow:hover {
+
+    background: var(--yellow-dark);
+
+    color: white;
+
 }
 
-/* Text */
 
-.text-green{
-    color:var(--dark-green);
+/* =============================================================
+   GREEN TEXT
+============================================================= */
+
+.text-green {
+
+    color: var(--dark-green);
+
 }
 
-/* Inputs */
 
-.form-control{
+/* =============================================================
+   INPUTS
+============================================================= */
 
-    border:1px solid #d6e4da;
+.form-control {
+
+    border: 1px solid #d6e4da;
+
 }
 
-.form-control:focus{
 
-    border-color:var(--green);
-    box-shadow:0 0 0 .2rem rgba(25,135,84,.15);
+.form-control:focus {
+
+    border-color: var(--green);
+
+    box-shadow:
+        0 0 0 .2rem
+        rgba(25, 135, 84, .15);
+
 }
 
-/* Table */
 
-.table-header{
+/* =============================================================
+   TABLE HEADER
+============================================================= */
 
-    background:var(--dark-green);
+.table-header {
+
+    background: var(--dark-green);
+
 }
 
-.table-header th{
 
-    background:var(--dark-green)!important;
-    color:white!important;
-    border:none;
-    padding:16px;
-    font-weight:600;
+.table-header th {
+
+    background: var(--dark-green) !important;
+
+    color: white !important;
+
+    border: none;
+
+    padding: 16px;
+
+    font-weight: 600;
+
+    white-space: nowrap;
+
 }
 
-.table tbody tr{
 
-    transition:.2s;
+/* =============================================================
+   TABLE ROW
+============================================================= */
+
+.table tbody tr {
+
+    transition: .2s;
+
 }
 
-.table tbody tr:hover{
 
-    background:#F8FCF9;
+.table tbody tr:hover {
+
+    background: #F8FCF9;
+
 }
 
-/* Category */
 
-.category-badge{
+/* =============================================================
+   CATEGORY BADGE
+============================================================= */
 
-    background:var(--light-green);
-    color:var(--dark-green);
-    font-weight:600;
+.category-badge {
+
+    background: var(--light-green);
+
+    color: var(--dark-green);
+
+    font-weight: 600;
+
 }
 
-/* Remarks */
 
-.remarks-box{
+/* =============================================================
+   REMARKS
+============================================================= */
 
-    max-width:220px;
-    white-space:nowrap;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    cursor:pointer;
+.remarks-box {
+
+    max-width: 220px;
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    cursor: pointer;
+
 }
 
-/* Cards */
 
-.card{
+/* =============================================================
+   CARD
+============================================================= */
 
-    border-radius:20px!important;
+.card {
+
+    border-radius: 20px !important;
+
 }
 
-/* Mobile */
 
-@media(max-width:768px){
+/* =============================================================
+   BADGES
+============================================================= */
 
-    .header-bar{
+.badge {
 
-        text-align:center;
-        justify-content:center!important;
+    white-space: nowrap;
+
+}
+
+
+/* =============================================================
+   MOBILE
+============================================================= */
+
+@media (max-width: 768px) {
+
+    .header-bar {
+
+        text-align: center;
+
+        justify-content: center !important;
+
     }
 
-    .btn-yellow{
 
-        width:100%;
+    .btn-yellow {
+
+        width: 100%;
+
     }
 
-    .remarks-box{
 
-        max-width:140px;
+    .remarks-box {
+
+        max-width: 140px;
+
+    }
+
+
+    .table-header th {
+
+        padding: 12px;
+
     }
 
 }
