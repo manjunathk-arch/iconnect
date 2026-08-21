@@ -1,142 +1,357 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="container mt-5">
+<div class="container-fluid py-4">
 
-  <!-- 🔙 Back to Dashboard -->
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="text-teal fw-bold">📋 Recent Kitchen Logs</h3>
-    {% if user.role == "kitchen_staff" %}
-<a href="{% url 'staff_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+    <!-- ===== Header ===== -->
+    <div class="card border-0 shadow-lg rounded-4 overflow-hidden mb-4">
 
-{% elif user.role == "kitchen_manager" %}
-<a href="{% url 'manager_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+        <div class="header-bar p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
 
-{% elif user.role == "cluster_manager" %}
-<a href="{% url 'cluster_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+            <div>
+                <h2 class="mb-1 fw-bold text-white">📋 Recent Kitchen Logs</h2>
+                <p class="mb-0 text-light">Track and review kitchen staff activity logs.</p>
+            </div>
 
-{% elif user.role == "owner" %}
-<a href="{% url 'owner_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+            {% if user.role == "kitchen_staff" %}
+                <a href="{% url 'staff_dashboard' %}" class="btn btn-yellow fw-bold">← Dashboard</a>
 
-{% elif user.role == "admin" %}
-<a href="{% url 'admin_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+            {% elif user.role == "kitchen_manager" %}
+                <a href="{% url 'manager_dashboard' %}" class="btn btn-yellow fw-bold">← Dashboard</a>
 
-{% else %}
-<a href="{% url 'dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back</a>
-{% endif %}
+            {% elif user.role == "cluster_manager" %}
+                <a href="{% url 'cluster_dashboard' %}" class="btn btn-yellow fw-bold">← Dashboard</a>
 
+            {% elif user.role == "owner" %}
+                <a href="{% url 'owner_dashboard' %}" class="btn btn-yellow fw-bold">← Dashboard</a>
 
-    </a>
-  </div>
+            {% elif user.role == "admin" %}
+                <a href="{% url 'admin_dashboard' %}" class="btn btn-yellow fw-bold">← Dashboard</a>
 
-  <!-- 🔍 Filter Bar -->
-  <form method="get" class="row g-3 mb-4 justify-content-center">
-    <div class="col-md-4">
-      <input 
-        type="text" 
-        name="emp_name" 
-        value="{{ request.GET.emp_name }}" 
-        class="form-control" 
-        placeholder="🔍 Search by Player Name">
+            {% else %}
+                <a href="{% url 'dashboard' %}" class="btn btn-yellow fw-bold">← Back</a>
+            {% endif %}
+
+        </div>
+
     </div>
-    <div class="col-md-4">
-      <input 
-        type="text" 
-        name="employee_id" 
-        value="{{ request.GET.employee_id }}" 
-        class="form-control" 
-        placeholder="🆔 Search by Employee ID">
+
+
+
+    <!-- ===== Filter Card ===== -->
+
+    <div class="card border-0 shadow rounded-4 mb-4">
+
+        <div class="card-body p-4">
+
+            <form method="get" class="row g-3 align-items-end">
+
+                <div class="col-md-5">
+
+                    <label class="form-label fw-semibold text-green">Player Name</label>
+
+                    <input
+                        type="text"
+                        name="emp_name"
+                        value="{{ request.GET.emp_name }}"
+                        class="form-control form-control-lg rounded-3"
+                        placeholder="Search player name"
+                    >
+
+                </div>
+
+                <div class="col-md-5">
+
+                    <label class="form-label fw-semibold text-green">Employee ID</label>
+
+                    <input
+                        type="text"
+                        name="employee_id"
+                        value="{{ request.GET.employee_id }}"
+                        class="form-control form-control-lg rounded-3"
+                        placeholder="Search employee ID"
+                    >
+
+                </div>
+
+                <div class="col-md-1 d-grid">
+
+                    <button type="submit" class="btn btn-green btn-lg rounded-3">
+                        Filter
+                    </button>
+
+                </div>
+
+                <div class="col-md-1 d-grid">
+
+                    <a href="{% url 'view_kitchen_logs' %}" class="btn btn-outline-secondary btn-lg rounded-3">
+                        Reset
+                    </a>
+
+                </div>
+
+            </form>
+
+        </div>
+
     </div>
-    <div class="col-md-2 d-grid">
-      <button type="submit" class="btn btn-teal text-white fw-bold">Filter</button>
+
+
+
+    <!-- ===== Table Card ===== -->
+
+    <div class="card border-0 shadow rounded-4 overflow-hidden">
+
+        {% if kitchen_logs %}
+
+        <div class="table-responsive">
+
+            <table class="table align-middle mb-0">
+
+                <thead class="table-header">
+
+                    <tr>
+                        <th>Created</th>
+                        <th>Log Date</th>
+                        <th>Player Name</th>
+                        <th>Employee ID</th>
+                        <th>Category</th>
+                        <th>Remarks</th>
+                        <th>Location</th>
+                        <th>Status</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for log in kitchen_logs %}
+
+                    <tr>
+
+                        <td>
+                            <small class="text-muted">{{ log.created_at|date:"d M Y" }}</small><br>
+                            <strong>{{ log.created_at|date:"H:i" }}</strong>
+                        </td>
+
+                        <td>{{ log.log_date|date:"d M Y" }}</td>
+
+                        <td>
+
+                            {% if log.staff %}
+                                <strong>{{ log.staff.first_name }} {{ log.staff.last_name }}</strong>
+                            {% else %}
+                                <strong>{{ log.emp_name }}</strong>
+                            {% endif %}
+
+                        </td>
+
+                        <td>
+                            <span class="badge bg-light text-dark border">{{ log.emp_id }}</span>
+                        </td>
+
+                        <td>
+                            <span class="badge category-badge">{{ log.category }}</span>
+                        </td>
+
+                        <td>
+
+                            <div class="remarks-box" title="{{ log.remarks }}">
+                                {{ log.remarks }}
+                            </div>
+
+                        </td>
+
+                        <td>{{ log.location }}</td>
+
+                        <td>
+
+                            {% if log.is_acknowledged %}
+                                <span class="badge bg-success px-3 py-2">✔ Acknowledged</span>
+                            {% else %}
+                                <span class="badge bg-warning text-dark px-3 py-2">Pending</span>
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        {% else %}
+
+        <div class="text-center py-5">
+
+            <div style="font-size:50px;">📄</div>
+
+            <h5 class="mt-3 text-muted">No Kitchen Logs Found</h5>
+
+            <p class="text-secondary mb-0">Logs will appear here once they are submitted.</p>
+
+        </div>
+
+        {% endif %}
+
     </div>
-    <div class="col-md-2 d-grid">
-      <a href="{% url 'view_kitchen_logs' %}" class="btn btn-outline-secondary">Reset</a>
-    </div>
-  </form>
 
-  <!-- 🧾 Logs Table -->
-  {% if kitchen_logs %}
-    <table class="table table-hover shadow-sm align-middle">
-      <thead class="table-light">
-        <tr>
-          <th>Date</th>
-          <th>Log Date</th>
-          <th>Player Name</th>
-          <th>Employee ID</th>
-          <th>Category</th>
-          <th>Remarks</th>
-          <th>Location</th>
-          <th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for log in kitchen_logs %}
-          <tr>
-  <td>{{ log.created_at|date:"d M Y, H:i" }}</td>
-  <td>{{ log.log_date|date:"d M Y" }}</td>
-
-  <td>
-    {% if log.staff %}
-        {{ log.staff.first_name }} {{ log.staff.last_name }}
-    {% else %}
-        {{ log.emp_name }}
-    {% endif %}
-  </td>
-
-  <td>{{ log.emp_id }}</td>
-  <td>{{ log.category }}</td>
-  <td>{{ log.remarks }}</td>
-  <td>{{ log.location }}</td>
-
-  <td>
-    {% if log.is_acknowledged %}
-      <span class="badge bg-success">✅ Staff Acknowledged</span>
-    {% else %}
-      <span class="badge bg-warning text-dark">⏳ Pending</span>
-    {% endif %}
-  </td>
-</tr>
-
-        {% endfor %}
-      </tbody>
-    </table>
-  {% else %}
-    <p class="text-muted text-center">No kitchen logs found.</p>
-  {% endif %}
 </div>
 
-<!-- 🎨 Styles -->
+
+
 <style>
-  body {
-    background-color: #f8f9fa;
-  }
 
-  .text-teal {
-    color: #009688;
-  }
+:root{
 
-  .btn-teal {
-    background-color: #009688;
-    border: none;
-  }
+    --dark-green:#064E3B;
+    --green:#198754;
+    --light-green:#EAF7EE;
 
-  .btn-teal:hover {
-    background-color: #00796b;
-  }
+    --yellow:#F4C20D;
+    --yellow-dark:#D9A900;
+}
 
-  table thead th {
-    color: #555;
-    font-weight: 600;
-  }
+/* Background */
 
-  input::placeholder {
-    color: #888;
-  }
+body{
+    background:#F5F8F5;
+}
 
-  form input {
-    border-radius: 10px;
-  }
+/* Header */
+
+.header-bar{
+    background:linear-gradient(135deg,var(--dark-green),var(--green));
+}
+
+/* Buttons */
+
+.btn-green{
+
+    background:var(--green);
+    border:none;
+    color:white;
+    font-weight:600;
+}
+
+.btn-green:hover{
+
+    background:#157347;
+    color:white;
+}
+
+.btn-yellow{
+
+    background:var(--yellow);
+    color:#173B2B;
+    border:none;
+    font-weight:700;
+}
+
+.btn-yellow:hover{
+
+    background:var(--yellow-dark);
+    color:white;
+}
+
+/* Text */
+
+.text-green{
+    color:var(--dark-green);
+}
+
+/* Inputs */
+
+.form-control{
+
+    border:1px solid #d6e4da;
+}
+
+.form-control:focus{
+
+    border-color:var(--green);
+    box-shadow:0 0 0 .2rem rgba(25,135,84,.15);
+}
+
+/* Table */
+
+.table-header{
+
+    background:var(--dark-green);
+}
+
+.table-header th{
+
+    background:var(--dark-green)!important;
+    color:white!important;
+    border:none;
+    padding:16px;
+    font-weight:600;
+}
+
+.table tbody tr{
+
+    transition:.2s;
+}
+
+.table tbody tr:hover{
+
+    background:#F8FCF9;
+}
+
+/* Category */
+
+.category-badge{
+
+    background:var(--light-green);
+    color:var(--dark-green);
+    font-weight:600;
+}
+
+/* Remarks */
+
+.remarks-box{
+
+    max-width:220px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    cursor:pointer;
+}
+
+/* Cards */
+
+.card{
+
+    border-radius:20px!important;
+}
+
+/* Mobile */
+
+@media(max-width:768px){
+
+    .header-bar{
+
+        text-align:center;
+        justify-content:center!important;
+    }
+
+    .btn-yellow{
+
+        width:100%;
+    }
+
+    .remarks-box{
+
+        max-width:140px;
+    }
+
+}
+
 </style>
 
 {% endblock %}
