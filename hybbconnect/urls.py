@@ -97,6 +97,10 @@ urlpatterns = [
     path("view_quality_feedback/",views.view_quality_feedback,name="view_quality_feedback",),
     path("quality-feedback-analytics/", views.quality_feedback_analytics, name="quality_feedback_analytics"),
     path("acknowledge_quality_feedback/<int:feedback_id>/",views.acknowledge_quality_feedback,name="acknowledge_quality_feedback",),
+    path(
+    "bulk_upload_quality_feedback/",
+    views.bulk_upload_quality_feedback,
+    name="bulk_upload_quality_feedback",),
     path("export/quality-feedback/",views.export_quality_feedback_csv,name="export_quality_feedback_csv",),
 
     

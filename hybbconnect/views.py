@@ -1,6 +1,8 @@
 import csv
 from datetime import datetime, timedelta
 from functools import wraps
+import io
+
 
 from django.contrib import messages
 from django.contrib.admin.views.decorators import staff_member_required
@@ -18,6 +20,7 @@ from django.db.models import Count, Q
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from .forms import QualityFeedbackBulkUploadForm
 
 from .forms import (
     IConnectForm,
@@ -2076,3 +2079,408 @@ def export_quality_feedback_csv(request):
         ])
 
     return response
+# =========================================================
+# CLUSTER MANAGER - BULK UPLOAD QUALITY FEEDBACK
+# =========================================================
+
+@login_required
+def bulk_upload_quality_feedback(request):
+
+    # -----------------------------------------------------
+    # Only Cluster Manager can use bulk upload
+    # -----------------------------------------------------
+    if request.user.role != "cluster_manager":
+        messages.error(
+            request,
+            "You are not authorized to use Quality Feedback bulk upload."
+        )
+        return redirect("view_quality_feedback")
+
+    # -----------------------------------------------------
+    # Check Cluster Manager profile
+    # -----------------------------------------------------
+    if not hasattr(request.user, "cluster_manager_profile"):
+        messages.error(
+            request,
+            "Cluster Manager profile not found."
+        )
+        return redirect("view_quality_feedback")
+
+    # -----------------------------------------------------
+    # Get assigned locations
+    # -----------------------------------------------------
+    assigned_locations = request.user.cluster_manager_profile.locations.all()
+
+    assigned_location_codes = set(
+        assigned_locations.values_list("code", flat=True)
+    )
+
+    # -----------------------------------------------------
+    # POST
+    # -----------------------------------------------------
+    if request.method == "POST":
+
+        form = QualityFeedbackBulkUploadForm(
+            request.POST,
+            request.FILES
+        )
+
+        if form.is_valid():
+
+            uploaded_file = request.FILES.get("file")
+
+            # -------------------------------------------------
+            # Check file
+            # -------------------------------------------------
+            if not uploaded_file:
+                messages.error(
+                    request,
+                    "Please select a CSV file."
+                )
+                return redirect("bulk_upload_quality_feedback")
+
+            if not uploaded_file.name.lower().endswith(".csv"):
+                messages.error(
+                    request,
+                    "Please upload a CSV file only."
+                )
+                return redirect("bulk_upload_quality_feedback")
+
+            try:
+
+                # -------------------------------------------------
+                # Read CSV
+                # -------------------------------------------------
+                decoded_file = uploaded_file.read().decode(
+                    "utf-8-sig"
+                )
+
+                reader = csv.DictReader(
+                    io.StringIO(decoded_file)
+                )
+
+                # -------------------------------------------------
+                # Required columns
+                # -------------------------------------------------
+                required_columns = {
+                    "Employee ID",
+                    "Category",
+                    "Remarks",
+                    "Feedback Date",
+                }
+
+                csv_columns = set(
+                    reader.fieldnames or []
+                )
+
+                missing_columns = required_columns - csv_columns
+
+                if missing_columns:
+
+                    messages.error(
+                        request,
+                        "Missing columns: "
+                        + ", ".join(sorted(missing_columns))
+                    )
+
+                    return redirect(
+                        "bulk_upload_quality_feedback"
+                    )
+
+                # -------------------------------------------------
+                # Allowed Categories
+                # -------------------------------------------------
+                allowed_categories = {
+                    "KOT Marking",
+                    "Follow SOP",
+                    "Quality Check",
+                    "Correct Portioning",
+                    "Order Verification before packing",
+                    "Use Dossier",
+                    "Follow dispatch checklist",
+                    "Photo Adherence",
+                    "Productivity",
+                    "Call Cust or Thank u notes",
+                }
+
+                created_count = 0
+                skipped_count = 0
+                errors = []
+
+                # -------------------------------------------------
+                # Process rows
+                # -------------------------------------------------
+                for row_number, row in enumerate(
+                    reader,
+                    start=2
+                ):
+
+                    emp_id = (
+                        row.get("Employee ID") or ""
+                    ).strip()
+
+                    category = (
+                        row.get("Category") or ""
+                    ).strip()
+
+                    remarks = (
+                        row.get("Remarks") or ""
+                    ).strip()
+
+                    feedback_date_raw = (
+                        row.get("Feedback Date") or ""
+                    ).strip()
+
+                    # =============================================
+                    # Basic Validation
+                    # =============================================
+
+                    if not emp_id:
+                        errors.append(
+                            f"Row {row_number}: Employee ID is required."
+                        )
+                        skipped_count += 1
+                        continue
+
+                    if not category:
+                        errors.append(
+                            f"Row {row_number}: Category is required."
+                        )
+                        skipped_count += 1
+                        continue
+
+                    if not feedback_date_raw:
+                        errors.append(
+                            f"Row {row_number}: Feedback Date is required."
+                        )
+                        skipped_count += 1
+                        continue
+
+                    # =============================================
+                    # DATE VALIDATION
+                    # Supports:
+                    #
+                    # 24-08-2026
+                    # 24/08/2026
+                    # 2026-08-24
+                    # =============================================
+
+                    feedback_date = None
+
+                    date_formats = [
+                        "%d-%m-%Y",
+                        "%d/%m/%Y",
+                        "%Y-%m-%d",
+                        "%d-%m-%y",
+                        "%d/%m/%y",
+                    ]
+
+                    for date_format in date_formats:
+
+                        try:
+
+                            feedback_date = datetime.strptime(
+                                feedback_date_raw,
+                                date_format
+                            ).date()
+
+                            break
+
+                        except ValueError:
+                            continue
+
+                    # If date could not be converted
+                    if feedback_date is None:
+
+                        errors.append(
+                            f"Row {row_number}: Invalid Feedback Date "
+                            f"'{feedback_date_raw}'. "
+                            f"Use DD-MM-YYYY, for example 24-08-2026."
+                        )
+
+                        skipped_count += 1
+                        continue
+
+                    # =============================================
+                    # CATEGORY VALIDATION
+                    # =============================================
+
+                    if category not in allowed_categories:
+
+                        errors.append(
+                            f"Row {row_number}: Invalid category "
+                            f"'{category}'."
+                        )
+
+                        skipped_count += 1
+                        continue
+
+                    # =============================================
+                    # FIND STAFF
+                    # =============================================
+
+                    try:
+
+                        staff = CustomUser.objects.get(
+                            employee_id=emp_id,
+                            role="kitchen_staff"
+                        )
+
+                    except CustomUser.DoesNotExist:
+
+                        errors.append(
+                            f"Row {row_number}: Employee ID "
+                            f"{emp_id} not found."
+                        )
+
+                        skipped_count += 1
+                        continue
+
+                    except CustomUser.MultipleObjectsReturned:
+
+                        errors.append(
+                            f"Row {row_number}: Multiple users found "
+                            f"with Employee ID {emp_id}."
+                        )
+
+                        skipped_count += 1
+                        continue
+
+                    # =============================================
+                    # CHECK STAFF LOCATION
+                    # =============================================
+
+                    if not staff.location:
+
+                        errors.append(
+                            f"Row {row_number}: Employee ID "
+                            f"{emp_id} has no location assigned."
+                        )
+
+                        skipped_count += 1
+                        continue
+
+                    staff_location_code = staff.location.code
+
+                    # =============================================
+                    # CHECK CLUSTER MANAGER LOCATION
+                    # =============================================
+
+                    if staff_location_code not in assigned_location_codes:
+
+                        errors.append(
+                            f"Row {row_number}: Employee ID "
+                            f"{emp_id} belongs to "
+                            f"{staff_location_code}, which is not "
+                            f"assigned to you."
+                        )
+
+                        skipped_count += 1
+                        continue
+
+                    # =============================================
+                    # STAFF NAME
+                    # =============================================
+
+                    staff_name = (
+                        staff.get_full_name().strip()
+                        if staff.get_full_name()
+                        else staff.username
+                    )
+
+                    # =============================================
+                    # CREATE QUALITY FEEDBACK
+                    # =============================================
+
+                    QualityFeedback.objects.create(
+
+                        staff=staff,
+
+                        emp_id=staff.employee_id,
+
+                        emp_name=staff_name,
+
+                        location=staff_location_code,
+
+                        category=category,
+
+                        remarks=remarks,
+
+                        feedback_date=feedback_date,
+                    )
+
+                    created_count += 1
+
+                # =================================================
+                # SUCCESS MESSAGE
+                # =================================================
+
+                if created_count:
+
+                    messages.success(
+                        request,
+                        f"{created_count} Quality Feedback "
+                        f"record(s) uploaded successfully."
+                    )
+
+                # =================================================
+                # SKIPPED MESSAGE
+                # =================================================
+
+                if skipped_count:
+
+                    messages.warning(
+                        request,
+                        f"{skipped_count} row(s) were skipped."
+                    )
+
+                # =================================================
+                # ERROR DETAILS
+                # =================================================
+
+                for error in errors[:20]:
+
+                    messages.error(
+                        request,
+                        error
+                    )
+
+                # -------------------------------------------------
+                # Return to Quality Feedback
+                # -------------------------------------------------
+
+                return redirect(
+                    "view_quality_feedback"
+                )
+
+            except UnicodeDecodeError:
+
+                messages.error(
+                    request,
+                    "Unable to read the CSV file. "
+                    "Please save the file as UTF-8 CSV."
+                )
+
+            except Exception as e:
+
+                messages.error(
+                    request,
+                    f"Bulk upload failed: {str(e)}"
+                )
+
+    else:
+
+        form = QualityFeedbackBulkUploadForm()
+
+    # ---------------------------------------------------------
+    # Render page
+    # ---------------------------------------------------------
+
+    return render(
+        request,
+        "bulk_upload_quality_feedback.html",
+        {
+            "form": form,
+            "assigned_locations": assigned_locations,
+        }
+    )

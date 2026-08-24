@@ -316,3 +316,20 @@ from django import forms
 
 class UserBulkUploadForm(forms.Form):
     file = forms.FileField(label="Upload CSV File")
+
+
+
+# ======================================================
+# QUALITY FEEDBACK BULK UPLOAD
+# ======================================================
+
+class QualityFeedbackBulkUploadForm(forms.Form):
+    file = forms.FileField(
+        label="Upload Quality Feedback CSV",
+        widget=forms.FileInput(
+            attrs={
+                "class": "form-control",
+                "accept": ".csv"
+            }
+        )
+    )
