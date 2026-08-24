@@ -2484,3 +2484,176 @@ def bulk_upload_quality_feedback(request):
             "assigned_locations": assigned_locations,
         }
     )
+
+@login_required
+def kitchen_log_report(request):
+
+    logs = KitchenLog.objects.all()
+
+    # =========================================================
+    # FILTERS
+    # =========================================================
+
+    start_date = request.GET.get("start_date", "").strip()
+    end_date = request.GET.get("end_date", "").strip()
+    location = request.GET.get("location", "").strip()
+    category = request.GET.get("category", "").strip()
+    status = request.GET.get("status", "").strip()
+
+    if start_date:
+        logs = logs.filter(log_date__gte=start_date)
+
+    if end_date:
+        logs = logs.filter(log_date__lte=end_date)
+
+    if location:
+        logs = logs.filter(location__icontains=location)
+
+    if category:
+        logs = logs.filter(category__icontains=category)
+
+    if status == "pending":
+        logs = logs.filter(is_acknowledged=False)
+
+    elif status == "acknowledged":
+        logs = logs.filter(is_acknowledged=True)
+
+
+    # =========================================================
+    # TOTAL / STATUS
+    # =========================================================
+
+    total_logs = logs.count()
+
+    acknowledged_count = logs.filter(
+        is_acknowledged=True
+    ).count()
+
+    pending_count = logs.filter(
+        is_acknowledged=False
+    ).count()
+
+
+    if total_logs:
+
+        acknowledged_percentage = round(
+            acknowledged_count * 100 / total_logs,
+            1
+        )
+
+        pending_percentage = round(
+            pending_count * 100 / total_logs,
+            1
+        )
+
+    else:
+
+        acknowledged_percentage = 0
+        pending_percentage = 0
+
+
+    # =========================================================
+    # DATE WISE
+    # =========================================================
+
+    date_wise_report = (
+        logs
+        .values("log_date")
+        .annotate(
+            total=Count("id"),
+            pending=Count(
+                "id",
+                filter=Q(is_acknowledged=False)
+            ),
+            acknowledged=Count(
+                "id",
+                filter=Q(is_acknowledged=True)
+            )
+        )
+        .order_by("-log_date")
+    )
+
+
+    # =========================================================
+    # LOCATION WISE
+    # =========================================================
+
+    location_wise_report = (
+        logs
+        .values("location")
+        .annotate(
+            total=Count("id"),
+            pending=Count(
+                "id",
+                filter=Q(is_acknowledged=False)
+            ),
+            acknowledged=Count(
+                "id",
+                filter=Q(is_acknowledged=True)
+            )
+        )
+        .order_by("-total")
+    )
+
+
+    # =========================================================
+    # CATEGORY WISE
+    # =========================================================
+
+    category_wise_report = (
+        logs
+        .values("category")
+        .annotate(
+            total=Count("id"),
+            pending=Count(
+                "id",
+                filter=Q(is_acknowledged=False)
+            ),
+            acknowledged=Count(
+                "id",
+                filter=Q(is_acknowledged=True)
+            )
+        )
+        .order_by("-total")
+    )
+
+
+    # =========================================================
+    # CONTEXT
+    # =========================================================
+
+    context = {
+
+        "date_wise_report": date_wise_report,
+
+        "location_wise_report": location_wise_report,
+
+        "category_wise_report": category_wise_report,
+
+        "total_logs": total_logs,
+
+        "acknowledged_count": acknowledged_count,
+
+        "pending_count": pending_count,
+
+        "acknowledged_percentage": acknowledged_percentage,
+
+        "pending_percentage": pending_percentage,
+
+        "start_date": start_date,
+
+        "end_date": end_date,
+
+        "location": location,
+
+        "category": category,
+
+        "status": status,
+
+    }
+
+    return render(
+        request,
+        "kitchen_log_report.html",
+        context
+    )

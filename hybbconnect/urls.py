@@ -55,6 +55,10 @@ urlpatterns = [
     path('view_kitchen_managers/', views.view_kitchen_managers, name='view_kitchen_managers'),
     path('view_kitchen_staff/', views.view_kitchen_staff, name='view_kitchen_staff'),
     path('view_kitchen_logs/', views.view_kitchen_logs, name='view_kitchen_logs'),
+    path(
+    "kitchen-log-report/",
+    views.kitchen_log_report,
+    name="kitchen_log_report"),
 
     # ------------------------
     # Cluster Manager Ticket Handling

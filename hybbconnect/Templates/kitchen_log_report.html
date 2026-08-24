@@ -1,0 +1,1907 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container-fluid py-4">
+
+    <!-- =========================================================
+         HEADER
+    ========================================================== -->
+
+    <div class="card border-0 shadow-lg rounded-4 overflow-hidden mb-4">
+
+        <div class="header-bar p-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+
+            <div>
+
+                <h2 class="mb-1 fw-bold text-white">
+                    📊 Kitchen Log Report
+                </h2>
+
+                <p class="mb-0 text-light">
+                    Analyze kitchen activity by date, location, category and status.
+                </p>
+
+            </div>
+
+
+            <div class="d-flex gap-2 flex-wrap">
+
+                <!-- Recent Logs -->
+
+                <a href="{% url 'view_kitchen_logs' %}"
+                   class="btn btn-light fw-bold">
+
+                    📋 Recent Logs
+
+                </a>
+
+
+                <!-- Dashboard -->
+
+                {% if user.role == "kitchen_staff" %}
+
+                    <a href="{% url 'staff_dashboard' %}"
+                       class="btn btn-yellow fw-bold">
+
+                        ← Dashboard
+
+                    </a>
+
+                {% elif user.role == "kitchen_manager" %}
+
+                    <a href="{% url 'manager_dashboard' %}"
+                       class="btn btn-yellow fw-bold">
+
+                        ← Dashboard
+
+                    </a>
+
+                {% elif user.role == "cluster_manager" %}
+
+                    <a href="{% url 'cluster_dashboard' %}"
+                       class="btn btn-yellow fw-bold">
+
+                        ← Dashboard
+
+                    </a>
+
+                {% elif user.role == "owner" %}
+
+                    <a href="{% url 'owner_dashboard' %}"
+                       class="btn btn-yellow fw-bold">
+
+                        ← Dashboard
+
+                    </a>
+
+                {% elif user.role == "admin" %}
+
+                    <a href="{% url 'admin_dashboard' %}"
+                       class="btn btn-yellow fw-bold">
+
+                        ← Dashboard
+
+                    </a>
+
+                {% else %}
+
+                    <a href="{% url 'dashboard' %}"
+                       class="btn btn-yellow fw-bold">
+
+                        ← Back
+
+                    </a>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         FILTER CARD
+    ========================================================== -->
+
+    <div class="card border-0 shadow rounded-4 mb-4">
+
+        <div class="card-body p-4">
+
+            <div class="d-flex align-items-center mb-3">
+
+                <div class="filter-icon me-3">
+                    🔎
+                </div>
+
+                <div>
+
+                    <h5 class="fw-bold text-green mb-0">
+                        Report Filters
+                    </h5>
+
+                    <small class="text-muted">
+                        Filter the report based on date, location, category or status.
+                    </small>
+
+                </div>
+
+            </div>
+
+
+            <form method="get"
+                  class="row g-3 align-items-end">
+
+
+                <!-- =================================================
+                     FROM DATE
+                ================================================== -->
+
+                <div class="col-lg-2 col-md-6">
+
+                    <label class="form-label fw-semibold text-green">
+                        From Date
+                    </label>
+
+                    <input
+                        type="date"
+                        name="start_date"
+                        value="{{ start_date }}"
+                        class="form-control form-control-lg rounded-3"
+                    >
+
+                </div>
+
+
+                <!-- =================================================
+                     TO DATE
+                ================================================== -->
+
+                <div class="col-lg-2 col-md-6">
+
+                    <label class="form-label fw-semibold text-green">
+                        To Date
+                    </label>
+
+                    <input
+                        type="date"
+                        name="end_date"
+                        value="{{ end_date }}"
+                        class="form-control form-control-lg rounded-3"
+                    >
+
+                </div>
+
+
+                <!-- =================================================
+                     LOCATION
+                ================================================== -->
+
+                <div class="col-lg-2 col-md-6">
+
+                    <label class="form-label fw-semibold text-green">
+                        Location
+                    </label>
+
+                    <input
+                        type="text"
+                        name="location"
+                        value="{{ location }}"
+                        class="form-control form-control-lg rounded-3"
+                        placeholder="Search location"
+                    >
+
+                </div>
+
+
+                <!-- =================================================
+                     CATEGORY
+                ================================================== -->
+
+                <div class="col-lg-2 col-md-6">
+
+                    <label class="form-label fw-semibold text-green">
+                        Category
+                    </label>
+
+                    <input
+                        type="text"
+                        name="category"
+                        value="{{ category }}"
+                        class="form-control form-control-lg rounded-3"
+                        placeholder="Search category"
+                    >
+
+                </div>
+
+
+                <!-- =================================================
+                     STATUS
+                ================================================== -->
+
+                <div class="col-lg-2 col-md-6">
+
+                    <label class="form-label fw-semibold text-green">
+                        Status
+                    </label>
+
+                    <select
+                        name="status"
+                        class="form-select form-select-lg rounded-3">
+
+                        <option value="">
+                            All Status
+                        </option>
+
+                        <option
+                            value="pending"
+                            {% if status == "pending" %}selected{% endif %}>
+                            ⏳ Pending
+                        </option>
+
+                        <option
+                            value="acknowledged"
+                            {% if status == "acknowledged" %}selected{% endif %}>
+                            ✔ Acknowledged
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <!-- =================================================
+                     BUTTONS
+                ================================================== -->
+
+                <div class="col-lg-2 col-md-6 d-flex gap-2">
+
+                    <button
+                        type="submit"
+                        class="btn btn-green btn-lg rounded-3 flex-grow-1">
+
+                        🔎 Filter
+
+                    </button>
+
+                    <a
+                        href="{% url 'kitchen_log_report' %}"
+                        class="btn btn-outline-secondary btn-lg rounded-3">
+
+                        Reset
+
+                    </a>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         SUMMARY CARDS
+    ========================================================== -->
+
+    <div class="row g-4 mb-4">
+
+
+        <!-- TOTAL -->
+
+        <div class="col-xl-4 col-md-6">
+
+            <div class="summary-card total-card">
+
+                <div class="summary-icon">
+                    📋
+                </div>
+
+                <div class="summary-content">
+
+                    <div class="summary-label">
+                        Total Logs
+                    </div>
+
+                    <div class="summary-number">
+                        {{ total_logs }}
+                    </div>
+
+                    <div class="summary-description">
+                        Total kitchen activity logs
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ACKNOWLEDGED -->
+
+        <div class="col-xl-4 col-md-6">
+
+            <div class="summary-card acknowledged-card">
+
+                <div class="summary-icon acknowledged-icon">
+                    ✔
+                </div>
+
+                <div class="summary-content">
+
+                    <div class="summary-label">
+                        Acknowledged
+                    </div>
+
+                    <div class="summary-number">
+                        {{ acknowledged_count }}
+                    </div>
+
+                    <div class="summary-description">
+
+                        {{ acknowledged_percentage }}%
+                        of total logs
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- PENDING -->
+
+        <div class="col-xl-4 col-md-6">
+
+            <div class="summary-card pending-card">
+
+                <div class="summary-icon pending-icon">
+                    ⏳
+                </div>
+
+                <div class="summary-content">
+
+                    <div class="summary-label">
+                        Pending
+                    </div>
+
+                    <div class="summary-number">
+                        {{ pending_count }}
+                    </div>
+
+                    <div class="summary-description">
+
+                        {{ pending_percentage }}%
+                        of total logs
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         STATUS PROGRESS
+    ========================================================== -->
+
+    <div class="card border-0 shadow rounded-4 mb-4">
+
+        <div class="card-body p-4">
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+
+                <div>
+
+                    <h5 class="fw-bold text-green mb-1">
+                        📊 Acknowledgement Status
+                    </h5>
+
+                    <small class="text-muted">
+                        Overall kitchen log acknowledgement progress
+                    </small>
+
+                </div>
+
+                <strong class="percentage-text">
+                    {{ acknowledged_percentage }}%
+                </strong>
+
+            </div>
+
+
+            <div class="progress report-progress">
+
+                <div
+                    class="progress-bar bg-success"
+                    role="progressbar"
+                    data-width="{{ acknowledged_percentage }}"
+                    aria-valuenow="{{ acknowledged_percentage }}"
+                    aria-valuemin="0"
+                    aria-valuemax="100">
+                </div>
+
+            </div>
+
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    document.querySelectorAll('[data-width]').forEach(function (element) {
+                        const value = Number(element.getAttribute('data-width')) || 0;
+                        element.style.width = value + '%';
+                    });
+                });
+            </script>
+
+
+            <div class="d-flex justify-content-between mt-2">
+
+                <small class="text-success fw-semibold">
+
+                    ✔ Acknowledged:
+                    {{ acknowledged_count }}
+
+                </small>
+
+                <small class="text-warning-dark fw-semibold">
+
+                    ⏳ Pending:
+                    {{ pending_count }}
+
+                </small>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         DATE WISE + LOCATION WISE
+    ========================================================== -->
+
+    <div class="row g-4 mb-4">
+
+
+        <!-- =====================================================
+             DATE WISE
+        ====================================================== -->
+
+        <div class="col-xl-6">
+
+            <div class="report-card">
+
+                <div class="report-card-header">
+
+                    <div class="d-flex align-items-center gap-2">
+
+                        <span class="report-title-icon">
+                            📅
+                        </span>
+
+                        <div>
+
+                            <h5 class="mb-0 fw-bold">
+                                Date Wise Report
+                            </h5>
+
+                            <small>
+                                Daily kitchen log summary
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="table-responsive">
+
+                    <table class="table report-table mb-0">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Date</th>
+
+                                <th class="text-center">
+                                    Total
+                                </th>
+
+                                <th class="text-center">
+                                    Pending
+                                </th>
+
+                                <th class="text-center">
+                                    Acknowledged
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            {% for item in date_wise_report %}
+
+                            <tr>
+
+                                <td class="fw-semibold">
+
+                                    {{ item.log_date|date:"d M Y" }}
+
+                                </td>
+
+                                <td class="text-center">
+
+                                    <span class="badge total-badge">
+                                        {{ item.total }}
+                                    </span>
+
+                                </td>
+
+                                <td class="text-center">
+
+                                    <span class="badge pending-badge">
+                                        {{ item.pending }}
+                                    </span>
+
+                                </td>
+
+                                <td class="text-center">
+
+                                    <span class="badge acknowledged-badge">
+                                        {{ item.acknowledged }}
+                                    </span>
+
+                                </td>
+
+                            </tr>
+
+                            {% empty %}
+
+                            <tr>
+
+                                <td colspan="4"
+                                    class="empty-cell">
+
+                                    📄 No date data available
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =====================================================
+             LOCATION WISE
+        ====================================================== -->
+
+        <div class="col-xl-6">
+
+            <div class="report-card">
+
+                <div class="report-card-header">
+
+                    <div class="d-flex align-items-center gap-2">
+
+                        <span class="report-title-icon">
+                            📍
+                        </span>
+
+                        <div>
+
+                            <h5 class="mb-0 fw-bold">
+                                Location Wise Report
+                            </h5>
+
+                            <small>
+                                Kitchen location summary
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="table-responsive">
+
+                    <table class="table report-table mb-0">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Location</th>
+
+                                <th class="text-center">
+                                    Total
+                                </th>
+
+                                <th class="text-center">
+                                    Pending
+                                </th>
+
+                                <th class="text-center">
+                                    Acknowledged
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            {% for item in location_wise_report %}
+
+                            <tr>
+
+                                <td class="fw-semibold">
+
+                                    {% if item.location %}
+                                        {{ item.location }}
+                                    {% else %}
+                                        Unknown
+                                    {% endif %}
+
+                                </td>
+
+                                <td class="text-center">
+
+                                    <span class="badge total-badge">
+                                        {{ item.total }}
+                                    </span>
+
+                                </td>
+
+                                <td class="text-center">
+
+                                    <span class="badge pending-badge">
+                                        {{ item.pending }}
+                                    </span>
+
+                                </td>
+
+                                <td class="text-center">
+
+                                    <span class="badge acknowledged-badge">
+                                        {{ item.acknowledged }}
+                                    </span>
+
+                                </td>
+
+                            </tr>
+
+                            {% empty %}
+
+                            <tr>
+
+                                <td colspan="4"
+                                    class="empty-cell">
+
+                                    📄 No location data available
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         CATEGORY WISE + STATUS WISE
+    ========================================================== -->
+
+    <div class="row g-4 mb-4">
+
+
+        <!-- =====================================================
+             CATEGORY WISE
+        ====================================================== -->
+
+        <div class="col-xl-6">
+
+            <div class="report-card">
+
+                <div class="report-card-header">
+
+                    <div class="d-flex align-items-center gap-2">
+
+                        <span class="report-title-icon">
+                            🏷️
+                        </span>
+
+                        <div>
+
+                            <h5 class="mb-0 fw-bold">
+                                Category Wise Report
+                            </h5>
+
+                            <small>
+                                Kitchen log category summary
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="table-responsive">
+
+                    <table class="table report-table mb-0">
+
+                        <thead>
+
+                            <tr>
+
+                                <th>Category</th>
+
+                                <th class="text-center">
+                                    Total
+                                </th>
+
+                                <th class="text-center">
+                                    Pending
+                                </th>
+
+                                <th class="text-center">
+                                    Acknowledged
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody>
+
+                            {% for item in category_wise_report %}
+
+                            <tr>
+
+                                <td class="fw-semibold">
+
+                                    {% if item.category %}
+                                        {{ item.category }}
+                                    {% else %}
+                                        Uncategorized
+                                    {% endif %}
+
+                                </td>
+
+                                <td class="text-center">
+
+                                    <span class="badge total-badge">
+                                        {{ item.total }}
+                                    </span>
+
+                                </td>
+
+                                <td class="text-center">
+
+                                    <span class="badge pending-badge">
+                                        {{ item.pending }}
+                                    </span>
+
+                                </td>
+
+                                <td class="text-center">
+
+                                    <span class="badge acknowledged-badge">
+                                        {{ item.acknowledged }}
+                                    </span>
+
+                                </td>
+
+                            </tr>
+
+                            {% empty %}
+
+                            <tr>
+
+                                <td colspan="4"
+                                    class="empty-cell">
+
+                                    📄 No category data available
+
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- =====================================================
+             STATUS WISE
+        ====================================================== -->
+
+        <div class="col-xl-6">
+
+            <div class="report-card status-card">
+
+                <div class="report-card-header">
+
+                    <div class="d-flex align-items-center gap-2">
+
+                        <span class="report-title-icon">
+                            📊
+                        </span>
+
+                        <div>
+
+                            <h5 class="mb-0 fw-bold">
+                                Status Wise Report
+                            </h5>
+
+                            <small>
+                                Pending vs acknowledged
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="status-body">
+
+
+                    <!-- =================================================
+                         PENDING
+                    ================================================== -->
+
+                    <div class="status-item">
+
+                        <div class="status-left">
+
+                            <div class="status-circle pending-circle">
+                                ⏳
+                            </div>
+
+                            <div>
+
+                                <strong>
+                                    Pending
+                                </strong>
+
+                                <small>
+                                    Awaiting acknowledgement
+                                </small>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="status-right">
+
+                            <strong class="status-number pending-number">
+                                {{ pending_count }}
+                            </strong>
+
+                            <span class="status-percent">
+                                {{ pending_percentage }}%
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- =================================================
+                         ACKNOWLEDGED
+                    ================================================== -->
+
+                    <div class="status-item">
+
+                        <div class="status-left">
+
+                            <div class="status-circle acknowledged-circle">
+                                ✔
+                            </div>
+
+                            <div>
+
+                                <strong>
+                                    Acknowledged
+                                </strong>
+
+                                <small>
+                                    Successfully acknowledged
+                                </small>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="status-right">
+
+                            <strong class="status-number acknowledged-number">
+                                {{ acknowledged_count }}
+                            </strong>
+
+                            <span class="status-percent">
+                                {{ acknowledged_percentage }}%
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- =================================================
+                         SUMMARY
+                    ================================================== -->
+
+                    <div class="status-summary">
+
+                        <div class="summary-line">
+
+                            <span>
+                                Total
+                            </span>
+
+                            <strong>
+                                {{ total_logs }}
+                            </strong>
+
+                        </div>
+
+
+                        <div class="summary-line">
+
+                            <span>
+                                Acknowledgement Rate
+                            </span>
+
+                            <strong class="text-success">
+                                {{ acknowledged_percentage }}%
+                            </strong>
+
+                        </div>
+
+
+                        <div class="summary-line">
+
+                            <span>
+                                Pending Rate
+                            </span>
+
+                            <strong class="text-warning-dark">
+                                {{ pending_percentage }}%
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================================================
+         FOOTER
+    ========================================================== -->
+
+    <div class="text-center text-muted small py-3">
+
+        Kitchen Log Report • Generated from current filtered data
+
+    </div>
+
+</div>
+
+
+<!-- =============================================================
+     CSS
+============================================================= -->
+
+<style>
+
+/* =============================================================
+   ROOT COLORS
+============================================================= */
+
+:root {
+
+    --dark-green: #064E3B;
+
+    --green: #198754;
+
+    --green-dark: #157347;
+
+    --light-green: #EAF7EE;
+
+    --yellow: #F4C20D;
+
+    --yellow-dark: #D9A900;
+
+    --light-yellow: #FFF8DF;
+
+    --border: #E2EAE5;
+
+    --background: #F5F8F5;
+
+}
+
+
+/* =============================================================
+   PAGE
+============================================================= */
+
+body {
+
+    background: var(--background);
+
+}
+
+
+/* =============================================================
+   CARD
+============================================================= */
+
+.card {
+
+    border-radius: 20px !important;
+
+}
+
+
+/* =============================================================
+   HEADER
+============================================================= */
+
+.header-bar {
+
+    background:
+        linear-gradient(
+            135deg,
+            var(--dark-green),
+            var(--green)
+        );
+
+}
+
+
+.header-bar h2 {
+
+    letter-spacing: .2px;
+
+}
+
+
+/* =============================================================
+   BUTTONS
+============================================================= */
+
+.btn-green {
+
+    background: var(--green);
+
+    border: none;
+
+    color: white;
+
+    font-weight: 700;
+
+}
+
+
+.btn-green:hover {
+
+    background: var(--green-dark);
+
+    color: white;
+
+}
+
+
+.btn-yellow {
+
+    background: var(--yellow);
+
+    border: none;
+
+    color: #173B2B;
+
+    font-weight: 700;
+
+}
+
+
+.btn-yellow:hover {
+
+    background: var(--yellow-dark);
+
+    color: white;
+
+}
+
+
+/* =============================================================
+   GREEN TEXT
+============================================================= */
+
+.text-green {
+
+    color: var(--dark-green);
+
+}
+
+
+.text-warning-dark {
+
+    color: #9A6B00;
+
+}
+
+
+/* =============================================================
+   FILTER
+============================================================= */
+
+.filter-icon {
+
+    width: 45px;
+
+    height: 45px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 12px;
+
+    background: var(--light-green);
+
+    font-size: 21px;
+
+}
+
+
+.form-control,
+.form-select {
+
+    border: 1px solid #D6E4DA;
+
+}
+
+
+.form-control:focus,
+.form-select:focus {
+
+    border-color: var(--green);
+
+    box-shadow:
+        0 0 0 .2rem
+        rgba(25, 135, 84, .15);
+
+}
+
+
+/* =============================================================
+   SUMMARY CARDS
+============================================================= */
+
+.summary-card {
+
+    min-height: 145px;
+
+    border-radius: 18px;
+
+    padding: 25px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 20px;
+
+    border: 1px solid var(--border);
+
+    background: white;
+
+    box-shadow:
+        0 5px 20px
+        rgba(0,0,0,.05);
+
+    transition: .2s ease;
+
+}
+
+
+.summary-card:hover {
+
+    transform: translateY(-3px);
+
+    box-shadow:
+        0 10px 25px
+        rgba(0,0,0,.09);
+
+}
+
+
+.total-card {
+
+    border-left: 5px solid #0d6efd;
+
+}
+
+
+.acknowledged-card {
+
+    border-left: 5px solid var(--green);
+
+}
+
+
+.pending-card {
+
+    border-left: 5px solid var(--yellow);
+
+}
+
+
+.summary-icon {
+
+    width: 60px;
+
+    height: 60px;
+
+    min-width: 60px;
+
+    border-radius: 16px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 28px;
+
+    background: #EEF4FF;
+
+}
+
+
+.acknowledged-icon {
+
+    background: var(--light-green);
+
+}
+
+
+.pending-icon {
+
+    background: var(--light-yellow);
+
+}
+
+
+.summary-label {
+
+    color: #6C757D;
+
+    font-size: 14px;
+
+    font-weight: 700;
+
+}
+
+
+.summary-number {
+
+    font-size: 32px;
+
+    font-weight: 800;
+
+    color: #173B2B;
+
+    line-height: 1.2;
+
+}
+
+
+.summary-description {
+
+    color: #7A8580;
+
+    font-size: 13px;
+
+    margin-top: 3px;
+
+}
+
+
+/* =============================================================
+   PROGRESS
+============================================================= */
+
+.report-progress {
+
+    height: 14px;
+
+    border-radius: 20px;
+
+    background: #E9ECEF;
+
+    overflow: hidden;
+
+}
+
+
+.report-progress .progress-bar {
+
+    border-radius: 20px;
+
+    transition: width .5s ease;
+
+}
+
+
+.percentage-text {
+
+    color: var(--green);
+
+    font-size: 20px;
+
+}
+
+
+/* =============================================================
+   REPORT CARD
+============================================================= */
+
+.report-card {
+
+    height: 100%;
+
+    background: white;
+
+    border: 1px solid var(--border);
+
+    border-radius: 18px;
+
+    overflow: hidden;
+
+    box-shadow:
+        0 5px 20px
+        rgba(0,0,0,.05);
+
+}
+
+
+.report-card-header {
+
+    padding: 18px 20px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #F4FAF6,
+            #FFFFFF
+        );
+
+    border-bottom: 1px solid var(--border);
+
+    color: var(--dark-green);
+
+}
+
+
+.report-card-header small {
+
+    color: #718078;
+
+}
+
+
+.report-title-icon {
+
+    width: 42px;
+
+    height: 42px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    border-radius: 11px;
+
+    background: var(--light-green);
+
+    font-size: 20px;
+
+}
+
+
+/* =============================================================
+   REPORT TABLE
+============================================================= */
+
+.report-table {
+
+    font-size: 14px;
+
+}
+
+
+.report-table thead th {
+
+    background: var(--dark-green) !important;
+
+    color: white !important;
+
+    border: none;
+
+    padding: 13px 12px;
+
+    white-space: nowrap;
+
+}
+
+
+.report-table tbody td {
+
+    padding: 13px 12px;
+
+    border-color: #EDF1EE;
+
+    vertical-align: middle;
+
+}
+
+
+.report-table tbody tr {
+
+    transition: .15s ease;
+
+}
+
+
+.report-table tbody tr:hover {
+
+    background: #F8FCF9;
+
+}
+
+
+/* =============================================================
+   BADGES
+============================================================= */
+
+.report-table .badge {
+
+    min-width: 40px;
+
+    padding: 7px 10px;
+
+    border-radius: 8px;
+
+    font-weight: 700;
+
+}
+
+
+.total-badge {
+
+    background: #EAF1FF;
+
+    color: #0D6EFD;
+
+}
+
+
+.pending-badge {
+
+    background: #FFF3CD;
+
+    color: #856404;
+
+}
+
+
+.acknowledged-badge {
+
+    background: #D1E7DD;
+
+    color: #0F5132;
+
+}
+
+
+/* =============================================================
+   EMPTY
+============================================================= */
+
+.empty-cell {
+
+    text-align: center;
+
+    color: #89948E;
+
+    padding: 35px !important;
+
+}
+
+
+/* =============================================================
+   STATUS CARD
+============================================================= */
+
+.status-body {
+
+    padding: 20px;
+
+}
+
+
+.status-item {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    padding: 18px 5px;
+
+    border-bottom: 1px solid #EDF1EE;
+
+}
+
+
+.status-left {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 13px;
+
+}
+
+
+.status-left strong {
+
+    display: block;
+
+    color: #26382F;
+
+}
+
+
+.status-left small {
+
+    display: block;
+
+    color: #89948E;
+
+    margin-top: 2px;
+
+}
+
+
+.status-circle {
+
+    width: 48px;
+
+    height: 48px;
+
+    border-radius: 13px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    font-size: 21px;
+
+}
+
+
+.pending-circle {
+
+    background: var(--light-yellow);
+
+}
+
+
+.acknowledged-circle {
+
+    background: var(--light-green);
+
+}
+
+
+.status-right {
+
+    text-align: right;
+
+}
+
+
+.status-number {
+
+    display: block;
+
+    font-size: 26px;
+
+    font-weight: 800;
+
+}
+
+
+.pending-number {
+
+    color: #A06B00;
+
+}
+
+
+.acknowledged-number {
+
+    color: var(--green);
+
+}
+
+
+.status-percent {
+
+    color: #7A8580;
+
+    font-size: 13px;
+
+    font-weight: 600;
+
+}
+
+
+/* =============================================================
+   STATUS SUMMARY
+============================================================= */
+
+.status-summary {
+
+    margin-top: 20px;
+
+    padding: 15px;
+
+    border-radius: 12px;
+
+    background: #F7FAF8;
+
+}
+
+
+.summary-line {
+
+    display: flex;
+
+    justify-content: space-between;
+
+    padding: 9px 0;
+
+    color: #66736C;
+
+}
+
+
+.summary-line:not(:last-child) {
+
+    border-bottom: 1px dashed #DCE5DF;
+
+}
+
+
+.summary-line strong {
+
+    color: #26382F;
+
+}
+
+
+/* =============================================================
+   RESPONSIVE
+============================================================= */
+
+@media (max-width: 992px) {
+
+    .summary-card {
+
+        min-height: 125px;
+
+    }
+
+}
+
+
+@media (max-width: 768px) {
+
+    .container-fluid {
+
+        padding-left: 12px;
+
+        padding-right: 12px;
+
+    }
+
+
+    .header-bar {
+
+        text-align: center;
+
+        justify-content: center !important;
+
+    }
+
+
+    .header-bar > div {
+
+        width: 100%;
+
+    }
+
+
+    .header-bar .d-flex {
+
+        justify-content: center;
+
+    }
+
+
+    .summary-card {
+
+        padding: 20px;
+
+    }
+
+
+    .summary-number {
+
+        font-size: 27px;
+
+    }
+
+
+    .report-card-header {
+
+        padding: 15px;
+
+    }
+
+
+    .report-table {
+
+        font-size: 13px;
+
+    }
+
+
+    .report-table thead th,
+    .report-table tbody td {
+
+        padding: 10px;
+
+    }
+
+
+    .status-item {
+
+        gap: 15px;
+
+    }
+
+}
+
+
+@media (max-width: 480px) {
+
+    .header-bar h2 {
+
+        font-size: 22px;
+
+    }
+
+
+    .summary-card {
+
+        gap: 14px;
+
+    }
+
+
+    .summary-icon {
+
+        width: 50px;
+
+        height: 50px;
+
+        min-width: 50px;
+
+        font-size: 23px;
+
+    }
+
+
+    .status-left small {
+
+        font-size: 11px;
+
+    }
+
+
+    .status-number {
+
+        font-size: 22px;
+
+    }
+
+}
+
+</style>
+
+{% endblock %}
