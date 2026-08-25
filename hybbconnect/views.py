@@ -60,16 +60,16 @@ CATEGORY_OWNER_MAP = {
     "Quality Related": "E014",
 
     # KitchenPlayerForm categories
-    "Salary Message not received": "E013",
-    "Salary Not Received": "E013",
-    "Shift Manager / Kitchen Manager Issue": "E013",
-    "Accommodation Issue": "E013",
-    "Salary is incorrect": "E013",
-    "Request - Salary Advance": "E013",
-    "Co-Worker Issue": "E013",
-    "Request a call Back": "E013",
-    "PF Related Issues": "E013",
-    "Salary Hold": "E013",
+    "Salary Message not received": "santhosh.p@hybb.in",
+    "Salary Not Received": "santhosh.p@hybb.in",
+    "Shift Manager / Kitchen Manager Issue": "santhosh.p@hybb.in",
+    "Accommodation Issue": "santhosh.p@hybb.in",
+    "Salary is incorrect": "santhosh.p@hybb.in",
+    "Request - Salary Advance": "santhosh.p@hybb.in",
+    "Co-Worker Issue": "santhosh.p@hybb.in",
+    "Request a call Back": "santhosh.p@hybb.in",
+    "PF Related Issues": "santhosh.p@hybb.in",
+    "Salary Hold": "santhosh.p@hybb.in",
 }
 
 
