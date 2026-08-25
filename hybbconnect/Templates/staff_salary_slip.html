@@ -46,9 +46,24 @@
 </style>
 
 <!-- 🔙 Fixed Back Button -->
-<a href="{% url 'staff_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">
-  ← Back to Dashboard
-</a>
+ {% if user.role == "kitchen_staff" %}
+<a href="{% url 'staff_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+
+{% elif user.role == "kitchen_manager" %}
+<a href="{% url 'manager_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+
+{% elif user.role == "cluster_manager" %}
+<a href="{% url 'cluster_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+
+{% elif user.role == "owner" %}
+<a href="{% url 'owner_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+
+{% elif user.role == "admin" %}
+<a href="{% url 'admin_dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back to Dashboard</a>
+
+{% else %}
+<a href="{% url 'dashboard' %}" class="btn btn-teal back-btn-fixed shadow-sm">← Back</a>
+{% endif %}
 
 <div class="container mt-4">
   <h4 class="fw-bold mb-3 text-teal text-center">💰 My Salary Draft</h4>
