@@ -199,6 +199,57 @@
             color: #806500;
         }
 
+        .notification-toggle {
+            position: relative;
+            border: 1px solid rgba(244, 197, 66, 0.55);
+            background: rgba(255, 255, 255, 0.08);
+            color: #F4C542;
+            border-radius: 999px;
+            width: 39px;
+            height: 39px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .notification-count {
+            position: absolute;
+            top: -7px;
+            right: -7px;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 5px;
+            border-radius: 999px;
+            background: #dc3545;
+            color: #fff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            line-height: 20px;
+            text-align: center;
+        }
+
+        .notification-menu {
+            width: min(360px, calc(100vw - 32px));
+            padding: 0;
+            overflow: hidden;
+        }
+
+        .notification-menu a {
+            color: #26332C !important;
+            text-decoration: none;
+        }
+
+        .notification-menu a:hover {
+            background: #f8f4df;
+            text-decoration: none;
+        }
+
+        .notification-empty {
+            padding: 14px 16px;
+            color: #68736d;
+            font-size: 0.9rem;
+        }
+
 
     </style>
 
@@ -231,7 +282,45 @@
 
             {% if request.user.is_authenticated %}
 
-                <div>
+                <div class="d-flex align-items-center gap-3">
+
+                    <div class="dropdown">
+                        <button class="notification-toggle"
+                                type="button"
+                                data-bs-toggle="dropdown"
+                                data-bs-auto-close="outside"
+                                aria-expanded="false"
+                                aria-label="Notifications">
+                            <i class="bi bi-bell"></i>
+                            {% if unread_notification_count %}
+                                <span class="notification-count">
+                                    {{ unread_notification_count }}
+                                </span>
+                            {% endif %}
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end notification-menu shadow">
+                            <h6 class="dropdown-header">
+                                Notifications
+                            </h6>
+                            {% for notification in unread_notifications %}
+                                <a class="dropdown-item small py-2"
+                                   href="{% url 'mark_notification_read' notification.id %}">
+                                    <div class="fw-semibold">
+                                        {{ notification.message }}
+                                    </div>
+                                    <div class="text-muted">
+                                        {{ notification.created_at|date:"d M Y, h:i A" }}
+                                    </div>
+                                </a>
+                            {% empty %}
+                                <div class="notification-empty">
+                                    No new notifications.
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div>
 
                     <strong>
                         {{ request.user.username }}
@@ -263,6 +352,8 @@
                         Change Password
 
                     </a>
+
+                </div>
 
                 </div>
 
@@ -311,6 +402,123 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js">
     </script>
+
+    {% if request.user.is_authenticated %}
+        <script>
+            (function () {
+                const unreadNotificationCount = Number("{{ unread_notification_count|default:0 }}");
+                const notificationStateKey = "hybbconnect:lastUnreadNotificationCount:{{ request.user.pk }}";
+
+                function readStoredCount() {
+                    try {
+                        return Number(localStorage.getItem(notificationStateKey) || "0");
+                    } catch (error) {
+                        return 0;
+                    }
+                }
+
+                function storeCount(count) {
+                    try {
+                        localStorage.setItem(notificationStateKey, String(count));
+                    } catch (error) {
+                        return;
+                    }
+                }
+
+                if (!unreadNotificationCount) {
+                    storeCount(0);
+                    return;
+                }
+
+                const previousCount = readStoredCount();
+                const shouldPlayNotificationSound = unreadNotificationCount > previousCount;
+
+                storeCount(unreadNotificationCount);
+
+                if (!shouldPlayNotificationSound) {
+                    return;
+                }
+
+                let hasPlayed = false;
+                let interactionListenersAdded = false;
+
+                function playNotificationSound() {
+                    if (hasPlayed) {
+                        return;
+                    }
+
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+
+                    if (!AudioContext) {
+                        return;
+                    }
+
+                    const audioContext = new AudioContext();
+                    const now = audioContext.currentTime;
+                    const gainNode = audioContext.createGain();
+
+                    hasPlayed = true;
+
+                    gainNode.connect(audioContext.destination);
+                    gainNode.gain.setValueAtTime(0.0001, now);
+                    gainNode.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
+                    gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 0.75);
+
+                    [740, 988].forEach(function (frequency, index) {
+                        const oscillator = audioContext.createOscillator();
+
+                        oscillator.type = "sine";
+                        oscillator.frequency.setValueAtTime(frequency, now + (index * 0.13));
+                        oscillator.connect(gainNode);
+                        oscillator.start(now + (index * 0.13));
+                        oscillator.stop(now + 0.58 + (index * 0.13));
+                    });
+
+                    window.setTimeout(function () {
+                        audioContext.close();
+                    }, 900);
+                }
+
+                function addInteractionListeners() {
+                    if (interactionListenersAdded) {
+                        return;
+                    }
+
+                    interactionListenersAdded = true;
+                    document.addEventListener("click", playAfterInteraction, { once: true });
+                    document.addEventListener("keydown", playAfterInteraction, { once: true });
+                    document.addEventListener("touchstart", playAfterInteraction, { once: true });
+                }
+
+                function playAfterInteraction() {
+                    playNotificationSound();
+                    document.removeEventListener("click", playAfterInteraction);
+                    document.removeEventListener("keydown", playAfterInteraction);
+                    document.removeEventListener("touchstart", playAfterInteraction);
+                }
+
+                try {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    const audioContext = AudioContext ? new AudioContext() : null;
+
+                    if (!audioContext) {
+                        return;
+                    }
+
+                    if (audioContext.state === "suspended") {
+                        audioContext.close();
+                        addInteractionListeners();
+                        return;
+                    }
+
+                    audioContext.close();
+                    playNotificationSound();
+                } catch (error) {
+                    addInteractionListeners();
+                }
+            })();
+        </script>
+    {% endif %}
 
 
     {% block extra_scripts %}

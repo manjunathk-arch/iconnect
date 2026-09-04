@@ -7,6 +7,11 @@ urlpatterns = [
     # ------------------------
     path('login/', views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
+    path(
+        "notifications/<int:notification_id>/read/",
+        views.mark_notification_read,
+        name="mark_notification_read",
+    ),
     path('change-password/', views.change_password, name='change_password'),
 
     # ------------------------
@@ -18,7 +23,27 @@ urlpatterns = [
     path('cluster_dashboard/', views.cluster_dashboard, name='cluster_dashboard'),
     path('owner_dashboard/', views.owner_dashboard, name='owner_dashboard'),
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path(
+        "staff-login-report/",
+        views.staff_login_report,
+        name="staff_login_report",
+    ),
+    path(
+        "daily-update-report/",
+        views.daily_update_report,
+        name="daily_update_report",
+    ),
     path('export/users/', views.export_users_csv, name='export_users_csv'),
+    path(
+        "export/daily-staff-logins/",
+        views.export_daily_staff_logins_csv,
+        name="export_daily_staff_logins_csv",
+    ),
+    path(
+        "export/daily-update-report/",
+        views.export_daily_update_report_csv,
+        name="export_daily_update_report_csv",
+    ),
 
     # ------------------------
     # Tickets

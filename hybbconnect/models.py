@@ -250,13 +250,42 @@ class OrderPhoto(models.Model):
 
 class Notification(models.Model):
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
+    sent_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="sent_notifications",
+    )
+    notification_type = models.CharField(max_length=50, default="general")
     message = models.TextField()
     link = models.CharField(max_length=255, blank=True, null=True)
     is_read = models.BooleanField(default=False)
+    read_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ['-created_at']
+
+
+class DailyStaffLogin(models.Model):
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name="daily_logins",
+        limit_choices_to={"role": "kitchen_staff"},
+    )
+    login_date = models.DateField(default=timezone.localdate)
+    first_login_at = models.DateTimeField(default=timezone.now)
+    last_login_at = models.DateTimeField(default=timezone.now)
+    login_count = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        unique_together = ("user", "login_date")
+        ordering = ["-login_date", "user__username"]
+
+    def __str__(self):
+        return f"{self.user} - {self.login_date}"
 
 
 

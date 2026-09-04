@@ -19,6 +19,7 @@ from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from .forms import QualityFeedbackBulkUploadForm
 
@@ -33,8 +34,10 @@ from .forms import (
 from .models import (
     Attendance,
     CustomUser,
+    DailyStaffLogin,
     KitchenLog,
     Location,
+    Notification,
     OrderPhoto,
     QualityFeedback,
     SalarySlip,
@@ -71,6 +74,103 @@ CATEGORY_OWNER_MAP = {
     "PF Related Issues": "santhosh.p@hybb.in",
     "Salary Hold": "santhosh.p@hybb.in",
 }
+
+
+DAILY_UPDATE_ROLES = [
+    "kitchen_staff",
+    "kitchen_manager",
+    "cluster_manager",
+]
+
+
+def create_staff_notification(staff, message, link):
+    if staff and staff.role == "kitchen_staff":
+        Notification.objects.create(
+            user=staff,
+            message=message,
+            link=link,
+        )
+
+
+def mark_notifications_read(user, link):
+    Notification.objects.filter(
+        user=user,
+        link=link,
+        is_read=False,
+    ).update(
+        is_read=True,
+        read_at=timezone.now(),
+    )
+
+
+def seconds_until_next_midnight():
+    now = timezone.localtime()
+    tomorrow = (now + timedelta(days=1)).date()
+    next_midnight = datetime.combine(
+        tomorrow,
+        datetime.min.time(),
+        tzinfo=now.tzinfo,
+    )
+    return max(1, int((next_midnight - now).total_seconds()))
+
+
+def record_daily_staff_login(user):
+    if user.role != "kitchen_staff":
+        return
+
+    now = timezone.now()
+    login_record, created = DailyStaffLogin.objects.get_or_create(
+        user=user,
+        login_date=timezone.localdate(),
+        defaults={
+            "first_login_at": now,
+            "last_login_at": now,
+        },
+    )
+
+    if not created:
+        login_record.last_login_at = now
+        login_record.login_count += 1
+        login_record.save(
+            update_fields=[
+                "last_login_at",
+                "login_count",
+            ]
+        )
+
+
+def get_staff_login_report_date(request):
+    selected_date_raw = request.GET.get("date", "").strip()
+
+    try:
+        return (
+            datetime.strptime(selected_date_raw, "%Y-%m-%d").date()
+            if selected_date_raw
+            else timezone.localdate()
+        )
+    except ValueError:
+        return timezone.localdate()
+
+
+def get_staff_login_report_queryset(selected_date):
+    return DailyStaffLogin.objects.select_related(
+        "user",
+        "user__location",
+    ).filter(
+        login_date=selected_date,
+        user__role="kitchen_staff",
+    ).order_by("-last_login_at")
+
+
+def get_daily_update_report_queryset(selected_date):
+    return Notification.objects.select_related(
+        "user",
+        "user__location",
+        "sent_by",
+    ).filter(
+        notification_type="daily_update",
+        created_at__date=selected_date,
+    ).order_by("-created_at", "user__username")
 
 
 # --------------------------
@@ -129,6 +229,9 @@ def login_view(request):
 
         if user is not None:
             login(request, user)
+            request.session.set_expiry(seconds_until_next_midnight())
+            record_daily_staff_login(user)
+
             if next_url:
                 return redirect(next_url)
 
@@ -150,6 +253,23 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return redirect("login")
+
+
+@login_required
+def mark_notification_read(request, notification_id):
+    notification = get_object_or_404(
+        Notification,
+        id=notification_id,
+        user=request.user,
+    )
+    notification.is_read = True
+    notification.read_at = timezone.now()
+    notification.save(update_fields=["is_read", "read_at"])
+
+    if notification.link and notification.link.startswith("/"):
+        return redirect(notification.link)
+
+    return redirect("dashboard")
 
 
 @login_required
@@ -241,6 +361,7 @@ def acknowledge_log(request, log_id):
     log.is_acknowledged = True
     log.acknowledged_at = timezone.now()
     log.save()
+    mark_notifications_read(request.user, reverse("my_logs"))
 
     messages.success(request, "Log acknowledged successfully.")
     return redirect("staff_dashboard")
@@ -264,6 +385,7 @@ def my_logs_view(request):
     logs = KitchenLog.objects.filter(
         Q(emp_id=request.user.employee_id) | Q(staff=request.user)
     ).order_by('-created_at')
+    mark_notifications_read(request.user, reverse("my_logs"))
 
     return render(request, "my_logs.html", {
         "logs": logs
@@ -524,6 +646,37 @@ def confirm_resolution(request, ticket_id):
 @login_required
 @user_passes_test(is_admin)
 def admin_dashboard(request):
+    if request.method == "POST":
+        action = request.POST.get("action")
+
+        if action == "send_common_notification":
+            common_message = request.POST.get("common_message", "").strip()
+
+            if not common_message:
+                messages.error(request, "Please enter a message for staff.")
+                return redirect("admin_dashboard")
+
+            recipients = CustomUser.objects.filter(
+                role__in=DAILY_UPDATE_ROLES,
+                is_active=True,
+            )
+
+            Notification.objects.bulk_create([
+                Notification(
+                    user=recipient,
+                    sent_by=request.user,
+                    notification_type="daily_update",
+                    message=f"Daily update: {common_message}",
+                    link=reverse("dashboard"),
+                )
+                for recipient in recipients
+            ])
+
+            messages.success(
+                request,
+                f"Daily update sent to {recipients.count()} active team member(s)."
+            )
+            return redirect("admin_dashboard")
 
     # -----------------------------------
     # SUMMARY METRICS
@@ -597,7 +750,6 @@ def admin_dashboard(request):
     ).order_by("-updated_at")
 
     staff_time_updates = StaffTimeUpdate.objects.select_related("staff", "updated_by").order_by("-updated_at")
-
     # -----------------------------------
     # CONTEXT
     # -----------------------------------
@@ -628,6 +780,47 @@ def admin_dashboard(request):
 
 @login_required
 @user_passes_test(is_admin)
+def staff_login_report(request):
+    selected_date = get_staff_login_report_date(request)
+    staff_logins = get_staff_login_report_queryset(selected_date)
+    total_staff_count = CustomUser.objects.filter(
+        role="kitchen_staff",
+        is_active=True,
+    ).count()
+
+    return render(
+        request,
+        "staff_login_report.html",
+        {
+            "selected_date": selected_date,
+            "staff_logins": staff_logins,
+            "logged_in_staff_count": staff_logins.count(),
+            "total_staff_count": total_staff_count,
+        },
+    )
+
+
+@login_required
+@user_passes_test(is_admin)
+def daily_update_report(request):
+    selected_date = get_staff_login_report_date(request)
+    notifications = get_daily_update_report_queryset(selected_date)
+
+    return render(
+        request,
+        "daily_update_report.html",
+        {
+            "selected_date": selected_date,
+            "notifications": notifications,
+            "sent_count": notifications.count(),
+            "acknowledged_count": notifications.filter(is_read=True).count(),
+            "pending_count": notifications.filter(is_read=False).count(),
+        },
+    )
+
+
+@login_required
+@user_passes_test(is_admin)
 def export_users_csv(request):
     """Download the complete user directory for administrators."""
     response = HttpResponse(content_type="text/csv; charset=utf-8")
@@ -645,6 +838,97 @@ def export_users_csv(request):
             "Active" if user.is_active else "Inactive",
             user.location.name if user.location else "",
             user.role,
+        ])
+
+    return response
+
+
+@login_required
+@user_passes_test(is_admin)
+def export_daily_staff_logins_csv(request):
+    """Download staff login records for the selected day."""
+    selected_date = get_staff_login_report_date(request)
+    logins = get_staff_login_report_queryset(selected_date).order_by(
+        "user__username"
+    )
+
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = (
+        f'attachment; filename="staff_logins_{selected_date:%Y-%m-%d}.csv"'
+    )
+    response.write("\ufeff")
+
+    writer = csv.writer(response)
+    writer.writerow([
+        "Date",
+        "Employee ID",
+        "Staff Name",
+        "Location",
+        "First Login",
+        "Last Login",
+        "Login Count",
+    ])
+
+    for login_record in logins:
+        location = (
+            login_record.user.location.name
+            if login_record.user.location
+            else ""
+        )
+        writer.writerow([
+            login_record.login_date.strftime("%Y-%m-%d"),
+            login_record.user.employee_id,
+            login_record.user.get_full_name() or login_record.user.username,
+            location,
+            timezone.localtime(login_record.first_login_at).strftime("%I:%M %p"),
+            timezone.localtime(login_record.last_login_at).strftime("%I:%M %p"),
+            login_record.login_count,
+        ])
+
+    return response
+
+
+@login_required
+@user_passes_test(is_admin)
+def export_daily_update_report_csv(request):
+    """Download acknowledgement status for daily update notifications."""
+    selected_date = get_staff_login_report_date(request)
+    notifications = get_daily_update_report_queryset(selected_date)
+
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = (
+        f'attachment; filename="daily_update_report_{selected_date:%Y-%m-%d}.csv"'
+    )
+    response.write("\ufeff")
+
+    writer = csv.writer(response)
+    writer.writerow([
+        "Date",
+        "EMP ID",
+        "EMP Name",
+        "Role",
+        "Location",
+        "Message",
+        "Acknowledged",
+        "Acknowledged At",
+    ])
+
+    for notification in notifications:
+        user = notification.user
+        location = user.location.name if user.location else ""
+        writer.writerow([
+            timezone.localtime(notification.created_at).strftime("%Y-%m-%d"),
+            user.employee_id,
+            user.get_full_name() or user.username,
+            user.get_role_display(),
+            location,
+            notification.message,
+            "Yes" if notification.is_read else "No",
+            (
+                timezone.localtime(notification.read_at).strftime("%Y-%m-%d %I:%M %p")
+                if notification.read_at
+                else ""
+            ),
         ])
 
     return response
@@ -703,6 +987,11 @@ def raise_staff_log(request):
             log.emp_name = log.staff.username or "Unknown"
 
         log.save()
+        create_staff_notification(
+            log.staff,
+            f"New Kitchen Log raised for {log.category}.",
+            reverse("my_logs"),
+        )
 
         # ✅ Redirect correctly
         redirect_page = "cluster_dashboard" if user.role == "cluster_manager" else "manager_dashboard"
@@ -1712,6 +2001,11 @@ def raise_quality_feedback(request):
                 feedback.location = "UNKNOWN"
 
             feedback.save()
+            create_staff_notification(
+                staff,
+                f"New Quality Feedback raised for {feedback.category}.",
+                reverse("view_quality_feedback"),
+            )
 
             messages.success(
                 request,
@@ -1780,6 +2074,10 @@ def view_quality_feedback(request):
         ).order_by(
             "-feedback_date",
             "-created_at"
+        )
+        mark_notifications_read(
+            user,
+            reverse("view_quality_feedback")
         )
 
     # --------------------------------------------------
@@ -1981,6 +2279,10 @@ def acknowledge_quality_feedback(
                 "is_acknowledged",
                 "acknowledged_at",
             ]
+        )
+        mark_notifications_read(
+            request.user,
+            reverse("view_quality_feedback")
         )
 
         messages.success(
@@ -2392,9 +2694,11 @@ def bulk_upload_quality_feedback(request):
                     # CREATE QUALITY FEEDBACK
                     # =============================================
 
-                    QualityFeedback.objects.create(
+                    feedback = QualityFeedback.objects.create(
 
                         staff=staff,
+
+                        raised_by=request.user,
 
                         emp_id=staff.employee_id,
 
@@ -2407,6 +2711,11 @@ def bulk_upload_quality_feedback(request):
                         remarks=remarks,
 
                         feedback_date=feedback_date,
+                    )
+                    create_staff_notification(
+                        staff,
+                        f"New Quality Feedback raised for {feedback.category}.",
+                        reverse("view_quality_feedback"),
                     )
 
                     created_count += 1

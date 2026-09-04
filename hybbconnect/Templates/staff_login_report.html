@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Staff Login Report{% endblock %}
+
+{% block content %}
+<div class="report-page">
+    <aside class="report-sidebar">
+        <div class="report-brand">
+            <img src="{% static 'images/academy_logo.png' %}" alt="BigBites Academy Logo">
+            <span>HybbConnect</span>
+        </div>
+        <p>ADMINISTRATION</p>
+        <nav>
+            <a href="{% url 'admin_dashboard' %}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+            <a class="active" href="{% url 'staff_login_report' %}"><i class="bi bi-person-check"></i> Staff Login Report</a>
+            <a href="{% url 'view_all_tickets' %}"><i class="bi bi-ticket-detailed"></i> All Tickets</a>
+            <a href="{% url 'view_kitchen_logs' %}"><i class="bi bi-journal-text"></i> Kitchen Logs</a>
+            <a href="{% url 'view_quality_feedback' %}"><i class="bi bi-clipboard-check"></i> Quality Feedback</a>
+        </nav>
+        <div class="report-footer">
+            <a href="{% url 'change_password' %}"><i class="bi bi-key"></i> Change Password</a>
+            <a href="{% url 'logout' %}"><i class="bi bi-box-arrow-right"></i> Logout</a>
+        </div>
+    </aside>
+
+    <main class="report-main">
+        <section class="report-hero">
+            <div>
+                <p class="eyebrow">DAILY STAFF ACTIVITY</p>
+                <h1>Staff Login Report</h1>
+                <p>{{ selected_date|date:"d M Y" }} &middot; {{ logged_in_staff_count }} of {{ total_staff_count }} active staff logged in</p>
+            </div>
+            <div class="report-actions">
+                <a href="{% url 'export_daily_staff_logins_csv' %}?date={{ selected_date|date:'Y-m-d' }}" class="btn export-button"><i class="bi bi-download"></i> Download CSV</a>
+            </div>
+        </section>
+
+        <section class="report-card filter-card">
+            <form method="get" class="login-filter">
+                <label for="login-date">Select date</label>
+                <input id="login-date" type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}">
+                <button type="submit" class="btn btn-success"><i class="bi bi-search"></i> View</button>
+                <a href="{% url 'staff_login_report' %}" class="btn btn-outline-secondary">Today</a>
+            </form>
+        </section>
+
+        <section class="report-card">
+            <div class="section-heading">
+                <div>
+                    <h2>Staff login details</h2>
+                    <p>First login, latest login, and login count for the selected date.</p>
+                </div>
+            </div>
+            {% if staff_logins %}
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Staff</th>
+                                <th>Employee ID</th>
+                                <th>Location</th>
+                                <th>First Login</th>
+                                <th>Last Login</th>
+                                <th>Login Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for login in staff_logins %}
+                                <tr>
+                                    <td class="fw-semibold">{{ login.user.get_full_name|default:login.user.username }}</td>
+                                    <td>{{ login.user.employee_id }}</td>
+                                    <td>{{ login.user.location.name|default:"-" }}</td>
+                                    <td>{{ login.first_login_at|date:"h:i A" }}</td>
+                                    <td>{{ login.last_login_at|date:"h:i A" }}</td>
+                                    <td><span class="count-badge">{{ login.login_count }}</span></td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state"><i class="bi bi-person-check"></i><p>No kitchen staff logins recorded for this date.</p></div>
+            {% endif %}
+        </section>
+    </main>
+</div>
+
+<style>
+    .report-page{display:flex;min-height:calc(100vh - 76px);background:#f8faf5}.report-sidebar{width:265px;flex:none;background:linear-gradient(180deg,#164d34,#103827);padding:24px 16px;color:#ebf2df;display:flex;flex-direction:column}.report-brand{display:flex;align-items:center;gap:11px;color:#fff;font-weight:700;font-size:1.15rem;padding:0 10px 30px}.report-brand img{width:47px;max-height:47px;object-fit:contain}.report-sidebar p{color:#b3ca9f;font-size:.7rem;letter-spacing:.11em;margin:0 12px 8px}.report-sidebar a,.report-footer a{display:block;color:#e1edda;text-decoration:none;padding:11px 12px;border-radius:8px;margin:3px 0;font-size:.92rem}.report-sidebar a i,.report-footer a i{width:23px;color:#f0ca45}.report-sidebar a:hover,.report-sidebar a.active,.report-footer a:hover{background:#2d6948;color:#fff}.report-sidebar a.active{box-shadow:inset 3px 0 #f1cc45}.report-footer{margin-top:auto;border-top:1px solid rgba(224,237,207,.2);padding-top:12px}.report-main{min-width:0;flex:1;padding:30px}.report-hero{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:30px 34px;border-radius:18px;background:linear-gradient(115deg,#1e6845,#388650);color:#fff;box-shadow:0 10px 24px rgba(30,100,67,.18)}.eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.13em;color:#f6d95e;margin:0 0 7px}.report-hero h1{font-size:1.85rem;margin:0 0 8px}.report-hero p:not(.eyebrow){margin:0;color:#e5f1e5}.report-actions{display:flex;gap:10px;flex-wrap:wrap}.export-button{background:#f1cd46!important;border-color:#f1cd46!important;color:#385422!important;font-weight:650}.report-card{background:#fff;border:1px solid #e0eadb;border-radius:14px;padding:22px;margin-top:24px;box-shadow:0 3px 12px rgba(32,82,52,.04)}.login-filter{display:flex;align-items:end;gap:10px;flex-wrap:wrap}.login-filter label{display:block;width:100%;font-size:.78rem;font-weight:650;color:#526755}.login-filter input{min-width:220px;border:1px solid #d4e2d1;border-radius:8px;padding:9px 10px;background:#fff;color:#425444}.section-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:17px}.section-heading h2{margin:0;color:#204632;font-weight:700;font-size:1.1rem}.section-heading p{margin:4px 0 0;color:#7b8c7c;font-size:.84rem}.table{font-size:.88rem}.table thead th{background:#f5f9ef;border-top:0;color:#697a6c;font-size:.73rem;text-transform:uppercase;letter-spacing:.04em}.count-badge{display:inline-block;min-width:28px;text-align:center;padding:4px 8px;border-radius:99px;background:#dcf0df;color:#167244;font-weight:700}.empty-state{text-align:center;color:#829283;padding:42px 12px}.empty-state i{font-size:2rem;display:block;color:#caa22a;margin-bottom:8px}@media(max-width:767px){.report-page{display:block}.report-sidebar{width:100%;min-height:auto}.report-sidebar nav{display:grid;grid-template-columns:1fr 1fr;gap:2px}.report-footer{display:flex;gap:8px;margin-top:14px}.report-footer a{margin:0}.report-main{padding:18px}.report-hero{padding:24px;align-items:flex-start;flex-direction:column}.login-filter{align-items:stretch}.login-filter input,.login-filter .btn{width:100%}.table{min-width:760px}}@media(max-width:420px){.report-sidebar nav{grid-template-columns:1fr}}
+</style>
+{% endblock %}

@@ -15,6 +15,8 @@ from .models import (
     ClusterManagerProfile,
     SalarySlip,
     OrderPhoto,
+    Notification,
+    DailyStaffLogin,
 )
 
 from django.contrib.auth import get_user_model
@@ -846,5 +848,19 @@ class OrderPhotoAdmin(admin.ModelAdmin):
         return "No Image"
 
     image_preview.short_description = "Photo Preview"
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ("user", "notification_type", "sent_by", "is_read", "read_at", "created_at")
+    list_filter = ("notification_type", "is_read", "created_at")
+    search_fields = ("user__username", "user__employee_id", "message")
+
+
+@admin.register(DailyStaffLogin)
+class DailyStaffLoginAdmin(admin.ModelAdmin):
+    list_display = ("user", "login_date", "first_login_at", "last_login_at", "login_count")
+    list_filter = ("login_date", "user__location")
+    search_fields = ("user__username", "user__employee_id")
 
 
