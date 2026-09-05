@@ -2180,6 +2180,11 @@ def view_quality_feedback(request):
             location=location
         )
 
+    feedbacks = feedbacks.select_related(
+        "raised_by",
+        "staff",
+    )
+
     # Locations for dropdown
     if user.role in ["admin", "owner"]:
 
@@ -2322,7 +2327,9 @@ def export_quality_feedback_csv(request):
             "view_quality_feedback"
         )
 
-    feedbacks = QualityFeedback.objects.all().order_by(
+    feedbacks = QualityFeedback.objects.select_related(
+        "raised_by"
+    ).order_by(
         "-feedback_date",
         "-created_at"
     )
@@ -2344,6 +2351,9 @@ def export_quality_feedback_csv(request):
         "Feedback Date",
         "Employee ID",
         "Employee Name",
+        "Raised By",
+        "Raised By Employee ID",
+        "Raised By Role",
         "Location",
         "Category",
         "Remarks",
@@ -2355,10 +2365,25 @@ def export_quality_feedback_csv(request):
     # CSV Data
     for feedback in feedbacks:
 
+        raised_by_name = ""
+        raised_by_employee_id = ""
+        raised_by_role = ""
+
+        if feedback.raised_by:
+            raised_by_name = (
+                feedback.raised_by.get_full_name().strip()
+                or feedback.raised_by.username
+            )
+            raised_by_employee_id = feedback.raised_by.employee_id or ""
+            raised_by_role = feedback.raised_by.get_role_display()
+
         writer.writerow([
             feedback.feedback_date,
             feedback.emp_id or "",
             feedback.emp_name or "",
+            raised_by_name,
+            raised_by_employee_id,
+            raised_by_role,
             feedback.location or "",
             feedback.category,
             feedback.remarks or "",
