@@ -229,18 +229,58 @@
         }
 
         .notification-menu {
-            width: min(360px, calc(100vw - 32px));
+            width: min(430px, calc(100vw - 32px));
             padding: 0;
             overflow: hidden;
         }
 
-        .notification-menu a {
-            color: #26332C !important;
+        .notification-item {
+            border-top: 1px solid #edf0e8;
+            padding: 14px 16px 16px;
+            color: #26332C;
+            white-space: normal;
+        }
+
+        .notification-title {
+            align-items: center;
+            color: #123B2A;
+            display: flex;
+            font-size: 0.92rem;
+            font-weight: 700;
+            gap: 7px;
+            margin-bottom: 10px;
+        }
+
+        .notification-message {
+            color: #34483c;
+            font-size: 0.9rem;
+            line-height: 1.45;
+            margin-bottom: 12px;
+        }
+
+        .notification-time {
+            color: #7a867f;
+            display: block;
+            font-size: 0.75rem;
+            margin-bottom: 12px;
+        }
+
+        .notification-acknowledge {
+            align-items: center;
+            background: #198754;
+            border-radius: 7px;
+            color: #fff !important;
+            display: inline-flex;
+            font-size: 0.8rem;
+            font-weight: 700;
+            gap: 5px;
+            padding: 7px 11px;
             text-decoration: none;
         }
 
-        .notification-menu a:hover {
-            background: #f8f4df;
+        .notification-acknowledge:hover {
+            background: #146c43;
+            color: #fff !important;
             text-decoration: none;
         }
 
@@ -303,15 +343,27 @@
                                 Notifications
                             </h6>
                             {% for notification in unread_notifications %}
-                                <a class="dropdown-item small py-2"
-                                   href="{% url 'mark_notification_read' notification.id %}">
-                                    <div class="fw-semibold">
-                                        {{ notification.message }}
+                                <div class="notification-item">
+                                    <div class="notification-title">
+                                        <i class="bi bi-bell-fill"></i>
+                                        {% if notification.notification_type == "daily_update" %}
+                                            Daily Update
+                                        {% else %}
+                                            Notification
+                                        {% endif %}
                                     </div>
-                                    <div class="text-muted">
+                                    <div class="notification-message">
+                                        {{ notification.message|linebreaksbr }}
+                                    </div>
+                                    <span class="notification-time">
                                         {{ notification.created_at|date:"d M Y, h:i A" }}
-                                    </div>
-                                </a>
+                                    </span>
+                                    <a class="notification-acknowledge"
+                                       href="{% url 'mark_notification_read' notification.id %}">
+                                        <i class="bi bi-check2"></i>
+                                        Acknowledge
+                                    </a>
+                                </div>
                             {% empty %}
                                 <div class="notification-empty">
                                     No new notifications.
