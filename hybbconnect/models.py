@@ -358,6 +358,7 @@ class QualityFeedback(models.Model):
         ("Photo Adherence", "Photo Adherence"),
         ("Productivity", "Productivity"),
         ("Call Cust or Thank u notes", "Call Cust or Thank u notes"),
+        ("traning Coruse Not Completed - Salary Hold", "traning Coruse Not Completed - Salary Hold"),
     ]
 
     staff = models.ForeignKey(

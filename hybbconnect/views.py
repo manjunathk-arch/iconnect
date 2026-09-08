@@ -2528,6 +2528,7 @@ def bulk_upload_quality_feedback(request):
                     "Photo Adherence",
                     "Productivity",
                     "Call Cust or Thank u notes",
+                    "traning Coruse Not Completed - Salary Hold",
                 }
 
                 created_count = 0
