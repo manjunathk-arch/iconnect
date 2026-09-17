@@ -76,6 +76,11 @@ CATEGORY_OWNER_MAP = {
 }
 
 
+OWNER_ONLY_TICKET_CONCERNS = {
+    "Shift Manager / Kitchen Manager Issue",
+}
+
+
 DAILY_UPDATE_ROLES = [
     "kitchen_staff",
     "kitchen_manager",
@@ -100,6 +105,20 @@ def mark_notifications_read(user, link):
     ).update(
         is_read=True,
         read_at=timezone.now(),
+    )
+
+
+def hide_owner_only_tickets(queryset):
+    return queryset.exclude(
+        Q(concern__in=OWNER_ONLY_TICKET_CONCERNS)
+        | Q(concern_category__in=OWNER_ONLY_TICKET_CONCERNS)
+    )
+
+
+def is_owner_only_ticket(ticket):
+    return (
+        ticket.concern in OWNER_ONLY_TICKET_CONCERNS
+        or ticket.concern_category in OWNER_ONLY_TICKET_CONCERNS
     )
 
 
@@ -403,7 +422,9 @@ def my_logs_view(request):
 def manager_dashboard(request):
     """Manager dashboard shows tickets and staff logs."""
     # Tickets assigned to manager
-    tickets = Ticket.objects.filter(reassigned_to=request.user).order_by("-created_at")
+    tickets = hide_owner_only_tickets(
+        Ticket.objects.filter(reassigned_to=request.user)
+    ).order_by("-created_at")
 
     # Staff logs from manager’s location
     staff_logs = KitchenLog.objects.filter(
@@ -452,6 +473,10 @@ def resolve_ticket(request, ticket_id):
 
     if ticket.reassigned_to != request.user:
         messages.error(request, "This ticket isn’t assigned to you.")
+        return redirect("manager_dashboard")
+
+    if is_owner_only_ticket(ticket):
+        messages.error(request, "This ticket can only be viewed by Admin or Owner.")
         return redirect("manager_dashboard")
 
     ticket.status = "Resolved"
@@ -1468,8 +1493,8 @@ def cluster_dashboard(request):
     )
 
     # ✅ iConnect Tickets in assigned locations
-    tickets = Ticket.objects.filter(
-        location__in=assigned_locations
+    tickets = hide_owner_only_tickets(
+        Ticket.objects.filter(location__in=assigned_locations)
     ).order_by("-created_at")
 
     # ✅ Recent kitchen logs
@@ -1500,6 +1525,10 @@ def close_cluster_ticket(request, ticket_id):
         return redirect("cluster_dashboard")
 
     # ----- 2️⃣ Prevent closing an already closed ticket -----
+    if is_owner_only_ticket(ticket):
+        messages.error(request, "This ticket can only be viewed by Admin or Owner.")
+        return redirect("cluster_dashboard")
+
     if ticket.status == "Closed":
         messages.info(request, "ℹ️ This ticket is already closed.")
         return redirect("cluster_dashboard")
@@ -1540,6 +1569,10 @@ def confirm_cluster_ticket(request, ticket_id):
         messages.error(request, "❌ You cannot modify tickets outside your assigned locations.")
         return redirect("cluster_dashboard")
 
+    if is_owner_only_ticket(ticket):
+        messages.error(request, "This ticket can only be viewed by Admin or Owner.")
+        return redirect("cluster_dashboard")
+
     ticket.status = "Confirmed"
     ticket.owner_confirmed_at = timezone.now()
     ticket.resolved_confirmed = True
@@ -1555,8 +1588,8 @@ def view_cluster_tickets(request):
     
     assigned_locations = user.cluster_manager_profile.locations.all()
 
-    tickets = Ticket.objects.filter(
-        location__in=assigned_locations
+    tickets = hide_owner_only_tickets(
+        Ticket.objects.filter(location__in=assigned_locations)
     ).order_by("-created_at")
 
     return render(request, "view_cluster_tickets.html", {
