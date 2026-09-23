@@ -177,7 +177,7 @@ class KitchenLog(models.Model):
         null=True,
         blank=True,
         related_name="staff_logs",
-        limit_choices_to={"role": "kitchen_staff"}
+        limit_choices_to={"role__in": ["kitchen_staff", "kitchen_manager"]},
     )
 
     emp_id = models.CharField(max_length=50, blank=True, null=True)

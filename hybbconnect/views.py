@@ -994,7 +994,10 @@ def raise_staff_log(request):
     elif user.role == "cluster_manager" and hasattr(user, "cluster_manager_profile"):
         # ✅ Cluster Manager: show all staff from assigned locations
         assigned_locations = user.cluster_manager_profile.locations.all()
-        staff_list = CustomUser.objects.filter(role="kitchen_staff", location__in=assigned_locations)
+        staff_list = CustomUser.objects.filter(
+            role__in=["kitchen_staff", "kitchen_manager"],
+            location__in=assigned_locations,
+        ).order_by("location__code", "role", "username")
 
     else:
         # Fallback

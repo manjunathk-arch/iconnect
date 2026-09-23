@@ -84,14 +84,14 @@ class KitchenLogForm(forms.ModelForm):
             )
 
         elif user and user.role == "cluster_manager" and hasattr(user, "cluster_manager_profile"):
-            # CM sees all staff from assigned locations
+            # CM sees kitchen staff and kitchen managers from assigned locations
             assigned_locations = user.cluster_manager_profile.locations.all()
             self.fields["staff"].queryset = CustomUser.objects.filter(
-                role="kitchen_staff",
+                role__in=["kitchen_staff", "kitchen_manager"],
                 location__in=assigned_locations
-            )
+            ).order_by("location__code", "role", "username")
 
-        self.fields["staff"].empty_label = "Select staff member"
+        self.fields["staff"].empty_label = "Select team member"
 
 # ======================================================
 # 3️⃣ QUALITY FEEDBACK FORM
