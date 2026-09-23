@@ -47,12 +47,12 @@ SECRET_KEY = os.environ.get(
 # ============================================================
 
 # Local:
-#   DEBUG=True
+#   Set DEBUG=True in your environment.
 #
 # Render:
 #   Set DEBUG=False
 
-DEBUG = os.environ.get("DEBUG", "True").lower() == "true"
+DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 
 
 # ============================================================
@@ -110,6 +110,8 @@ MIDDLEWARE = [
 
     # Static files in production
     "whitenoise.middleware.WhiteNoiseMiddleware",
+
+    "django.middleware.gzip.GZipMiddleware",
 
     "django.contrib.sessions.middleware.SessionMiddleware",
 
@@ -263,6 +265,8 @@ STATIC_URL = "/static/"
 
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+WHITENOISE_MAX_AGE = 31536000
+
 
 # WhiteNoise
 # This allows Django/Render to serve CSS, JS and other
@@ -368,3 +372,15 @@ else:
 # ============================================================
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# ============================================================
+# CACHE
+# ============================================================
+
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "hybbconnect-cache",
+    }
+}

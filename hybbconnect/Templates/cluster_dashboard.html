@@ -51,10 +51,10 @@
         </section>
 
         <section class="metric-grid">
-            <a href="{% url 'view_kitchen_managers' %}" class="metric-card"><div class="metric-icon green"><i class="bi bi-person-workspace"></i></div><div><span>Kitchen managers</span><strong>{{ kitchen_managers|length }}</strong><small>in assigned locations</small></div><i class="bi bi-arrow-up-right metric-arrow"></i></a>
-            <a href="{% url 'view_kitchen_staff' %}" class="metric-card"><div class="metric-icon yellow"><i class="bi bi-people"></i></div><div><span>Kitchen staff</span><strong>{{ kitchen_staff|length }}</strong><small>team members</small></div><i class="bi bi-arrow-up-right metric-arrow"></i></a>
-            <a href="{% url 'view_kitchen_logs' %}" class="metric-card"><div class="metric-icon green"><i class="bi bi-journal-text"></i></div><div><span>Recent logs</span><strong>{{ kitchen_logs|length }}</strong><small>latest activity</small></div><i class="bi bi-arrow-up-right metric-arrow"></i></a>
-            <a href="{% url 'view_cluster_tickets' %}" class="metric-card"><div class="metric-icon yellow"><i class="bi bi-ticket-detailed"></i></div><div><span>Cluster tickets</span><strong>{{ tickets|length }}</strong><small>all ticket statuses</small></div><i class="bi bi-arrow-up-right metric-arrow"></i></a>
+            <a href="{% url 'view_kitchen_managers' %}" class="metric-card"><div class="metric-icon green"><i class="bi bi-person-workspace"></i></div><div><span>Kitchen managers</span><strong>{{ kitchen_manager_count }}</strong><small>in assigned locations</small></div><i class="bi bi-arrow-up-right metric-arrow"></i></a>
+            <a href="{% url 'view_kitchen_staff' %}" class="metric-card"><div class="metric-icon yellow"><i class="bi bi-people"></i></div><div><span>Kitchen staff</span><strong>{{ kitchen_staff_count }}</strong><small>team members</small></div><i class="bi bi-arrow-up-right metric-arrow"></i></a>
+            <a href="{% url 'view_kitchen_logs' %}" class="metric-card"><div class="metric-icon green"><i class="bi bi-journal-text"></i></div><div><span>Recent logs</span><strong>{{ recent_log_count }}</strong><small>latest activity</small></div><i class="bi bi-arrow-up-right metric-arrow"></i></a>
+            <a href="{% url 'view_cluster_tickets' %}" class="metric-card"><div class="metric-icon yellow"><i class="bi bi-ticket-detailed"></i></div><div><span>Cluster tickets</span><strong>{{ ticket_count }}</strong><small>all ticket statuses</small></div><i class="bi bi-arrow-up-right metric-arrow"></i></a>
         </section>
 
         <section class="row g-4">

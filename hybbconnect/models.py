@@ -41,6 +41,12 @@ class CustomUser(AbstractUser):
     # constraint once another empty value already exists).
     REQUIRED_FIELDS = ["email", "employee_id", "role"]
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["role", "is_active"], name="user_role_active_idx"),
+            models.Index(fields=["role", "location"], name="user_role_location_idx"),
+        ]
+
     def __str__(self):
         return self.username or self.email or self.employee_id
 
@@ -97,6 +103,15 @@ class Ticket(models.Model):
     closed_at = models.DateTimeField(null=True, blank=True)
     staff_confirmed = models.BooleanField(default=False)
     staff_confirmed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["status", "-created_at"], name="ticket_status_created_idx"),
+            models.Index(fields=["location", "-created_at"], name="ticket_location_created_idx"),
+            models.Index(fields=["assigned_owner", "-created_at"], name="ticket_owner_created_idx"),
+            models.Index(fields=["reassigned_to", "-created_at"], name="ticket_reassign_created_idx"),
+            models.Index(fields=["employee", "-created_at"], name="ticket_employee_created_idx"),
+        ]
 
 
     def __str__(self):
@@ -178,6 +193,14 @@ class KitchenLog(models.Model):
     is_acknowledged = models.BooleanField(default=False)
     acknowledged_at = models.DateTimeField(null=True, blank=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["location", "-created_at"], name="klog_location_created_idx"),
+            models.Index(fields=["log_date"], name="klog_date_idx"),
+            models.Index(fields=["staff", "-created_at"], name="klog_staff_created_idx"),
+            models.Index(fields=["is_acknowledged"], name="klog_ack_idx"),
+        ]
+
     def __str__(self):
         if self.staff:
             return f"{self.staff.username} - {self.category}"
@@ -244,6 +267,12 @@ class OrderPhoto(models.Model):
 
     location = models.ForeignKey("Location", on_delete=models.SET_NULL, null=True, blank=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["location", "-uploaded_at"], name="photo_location_uploaded_idx"),
+            models.Index(fields=["uploaded_by", "-uploaded_at"], name="photo_user_uploaded_idx"),
+        ]
+
     def __str__(self):
         return f"{self.order_id} - {self.uploaded_by.username if self.uploaded_by else 'Unknown'}"
 
@@ -266,6 +295,10 @@ class Notification(models.Model):
 
     class Meta:
         ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=["user", "is_read", "-created_at"], name="notif_user_read_created_idx"),
+            models.Index(fields=["notification_type", "-created_at"], name="notif_type_created_idx"),
+        ]
 
 
 class DailyStaffLogin(models.Model):
@@ -283,6 +316,10 @@ class DailyStaffLogin(models.Model):
     class Meta:
         unique_together = ("user", "login_date")
         ordering = ["-login_date", "user__username"]
+        indexes = [
+            models.Index(fields=["login_date"], name="daily_login_date_idx"),
+            models.Index(fields=["user", "login_date"], name="daily_login_user_date_idx"),
+        ]
 
     def __str__(self):
         return f"{self.user} - {self.login_date}"
@@ -311,6 +348,12 @@ class StaffTimeUpdate(models.Model):
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="updated_time_entries")
     updated_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["staff", "-updated_at"], name="stime_staff_updated_idx"),
+            models.Index(fields=["updated_by", "-updated_at"], name="stime_by_updated_idx"),
+        ]
+
     def __str__(self):
         return f"{self.staff} - {self.update_type}"
 
@@ -335,6 +378,10 @@ class Attendance(models.Model):
     class Meta:
         unique_together = ("user", "date")
         ordering = ["-date"]
+        indexes = [
+            models.Index(fields=["user", "date"], name="attendance_user_date_idx"),
+            models.Index(fields=["date"], name="attendance_date_idx"),
+        ]
 
     def save(self, *args, **kwargs):
         if self.punch_in and self.punch_out:
@@ -390,6 +437,14 @@ class QualityFeedback(models.Model):
 
     is_acknowledged = models.BooleanField(default=False)
     acknowledged_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["staff", "-created_at"], name="qfb_staff_created_idx"),
+            models.Index(fields=["raised_by", "-created_at"], name="qfb_raised_created_idx"),
+            models.Index(fields=["location", "feedback_date"], name="qfb_location_date_idx"),
+            models.Index(fields=["is_acknowledged"], name="qfb_ack_idx"),
+        ]
 
     def __str__(self):
         if self.staff:

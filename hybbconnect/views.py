@@ -15,6 +15,7 @@ from django.contrib.auth import (
 )
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.forms import PasswordChangeForm
+from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
 from django.http import HttpResponse, HttpResponseForbidden
@@ -95,6 +96,7 @@ def create_staff_notification(staff, message, link):
             message=message,
             link=link,
         )
+        cache.delete(f"unread_notifications:{staff.pk}")
 
 
 def mark_notifications_read(user, link):
@@ -106,6 +108,7 @@ def mark_notifications_read(user, link):
         is_read=True,
         read_at=timezone.now(),
     )
+    cache.delete(f"unread_notifications:{user.pk}")
 
 
 def hide_owner_only_tickets(queryset):
@@ -284,6 +287,7 @@ def mark_notification_read(request, notification_id):
     notification.is_read = True
     notification.read_at = timezone.now()
     notification.save(update_fields=["is_read", "read_at"])
+    cache.delete(f"unread_notifications:{request.user.pk}")
 
     if notification.link and notification.link.startswith("/"):
         return redirect(notification.link)
@@ -696,6 +700,10 @@ def admin_dashboard(request):
                 )
                 for recipient in recipients
             ])
+            cache.delete_many([
+                f"unread_notifications:{recipient.pk}"
+                for recipient in recipients
+            ])
 
             messages.success(
                 request,
@@ -830,6 +838,11 @@ def staff_login_report(request):
 def daily_update_report(request):
     selected_date = get_staff_login_report_date(request)
     notifications = get_daily_update_report_queryset(selected_date)
+    notification_counts = notifications.aggregate(
+        sent_count=Count("id"),
+        acknowledged_count=Count("id", filter=Q(is_read=True)),
+        pending_count=Count("id", filter=Q(is_read=False)),
+    )
 
     return render(
         request,
@@ -837,9 +850,9 @@ def daily_update_report(request):
         {
             "selected_date": selected_date,
             "notifications": notifications,
-            "sent_count": notifications.count(),
-            "acknowledged_count": notifications.filter(is_read=True).count(),
-            "pending_count": notifications.filter(is_read=False).count(),
+            "sent_count": notification_counts["sent_count"],
+            "acknowledged_count": notification_counts["acknowledged_count"],
+            "pending_count": notification_counts["pending_count"],
         },
     )
 
@@ -1054,7 +1067,12 @@ def confirm_ticket_closure(request, ticket_id):
 
 def view_all_tickets(request):
 
-    tickets = Ticket.objects.all().order_by("-created_at")
+    tickets = Ticket.objects.select_related(
+        "employee",
+        "location",
+        "assigned_owner",
+        "reassigned_to",
+    ).order_by("-created_at")
 
     # ----------------------------------
     # ⭐ FILTERS
@@ -1071,6 +1089,12 @@ def view_all_tickets(request):
 
     if location:
         tickets = tickets.filter(location__name=location)
+
+    tickets_page = None
+    if request.GET.get("download") != "csv":
+        paginator = Paginator(tickets, 50)
+        tickets_page = paginator.get_page(request.GET.get("page"))
+        tickets = list(tickets_page.object_list)
 
     # ----------------------------------
     # ⭐ Prepare values for HTML table
@@ -1186,13 +1210,15 @@ def view_all_tickets(request):
     # ----------------------------------
     # ⭐ PAGINATION
     # ----------------------------------
-    paginator = Paginator(tickets, 50)
-    page = request.GET.get("page")
-    tickets_page = paginator.get_page(page)
+    if tickets_page is None:
+        paginator = Paginator(tickets, 50)
+        tickets_page = paginator.get_page(request.GET.get("page"))
 
     # Dropdown lists
-    owners = CustomUser.objects.filter(role="ticket_owner")
-    locations = Location.objects.all()
+    owners = CustomUser.objects.filter(
+        role__in=["owner", "cluster_manager"],
+    ).order_by("username")
+    locations = Location.objects.all().order_by("name")
 
     return render(request, "view_all_tickets.html", {
         "tickets": tickets_page,
@@ -1479,6 +1505,9 @@ def cluster_dashboard(request):
     assigned_locations = []
     if hasattr(user, "cluster_manager_profile"):
         assigned_locations = user.cluster_manager_profile.locations.all()
+    assigned_location_codes = list(
+        assigned_locations.values_list("code", flat=True)
+    )
 
     # ✅ Kitchen Managers in those locations
     kitchen_managers = CustomUser.objects.filter(
@@ -1499,14 +1528,18 @@ def cluster_dashboard(request):
 
     # ✅ Recent kitchen logs
     kitchen_logs = KitchenLog.objects.filter(
-        location__in=[loc.code for loc in assigned_locations]
+        location__in=assigned_location_codes
     ).order_by("-created_at")[:10]
 
     context = {
         "assigned_locations": assigned_locations,
         "kitchen_managers": kitchen_managers,
+        "kitchen_manager_count": kitchen_managers.count(),
         "kitchen_staff": kitchen_staff,
+        "kitchen_staff_count": kitchen_staff.count(),
         "kitchen_logs": kitchen_logs,
+        "recent_log_count": len(kitchen_logs),
+        "ticket_count": tickets.count(),
         "tickets": tickets,  # 👈 Added
     }
     return render(request, "cluster_dashboard.html", context)
@@ -1589,11 +1622,18 @@ def view_cluster_tickets(request):
     assigned_locations = user.cluster_manager_profile.locations.all()
 
     tickets = hide_owner_only_tickets(
-        Ticket.objects.filter(location__in=assigned_locations)
+        Ticket.objects.select_related(
+            "employee",
+            "location",
+            "assigned_owner",
+            "reassigned_to",
+        ).filter(location__in=assigned_locations)
     ).order_by("-created_at")
+    paginator = Paginator(tickets, 50)
+    tickets_page = paginator.get_page(request.GET.get("page"))
 
     return render(request, "view_cluster_tickets.html", {
-        "tickets": tickets,
+        "tickets": tickets_page,
         "assigned_locations": assigned_locations,
     })
 
