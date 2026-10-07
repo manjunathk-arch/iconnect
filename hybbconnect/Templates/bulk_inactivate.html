@@ -1,0 +1,21 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+<h1>Bulk Mark Users Inactive</h1>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="button button-primary">Upload</button>
+</form>
+
+<h3>CSV Format</h3>
+<p>Use either <strong>employee_id</strong> or <strong>username</strong>. You can include both columns.</p>
+<pre>
+employee_id,username
+1001,john
+1002,
+,mary
+</pre>
+
+{% endblock %}

@@ -27,11 +27,12 @@ from django.shortcuts import render, redirect
 from django.urls import path
 from django.contrib import messages
 from django.contrib.auth.hashers import make_password
-from .forms import UserBulkUploadForm
+from .forms import UserBulkUploadForm, UserInactiveBulkUploadForm
 from .models import CustomUser
 from django.contrib.auth.admin import UserAdmin
 from openpyxl import load_workbook
 from django.db import transaction
+from django.db.models import Q
 
 import csv
 import pandas as pd
@@ -44,7 +45,7 @@ from django.urls import path
 from django.contrib.auth.hashers import make_password
 
 from .models import CustomUser, Location
-from .forms import UserBulkUploadForm
+from .forms import UserBulkUploadForm, UserInactiveBulkUploadForm
 
 User = get_user_model()
 
@@ -92,8 +93,104 @@ class CustomUserAdmin(UserAdmin):
                 self.admin_site.admin_view(self.bulk_upload_view),
                 name="customuser_bulk_upload",
             ),
+            path(
+                "bulk-inactivate/",
+                self.admin_site.admin_view(self.bulk_inactivate_view),
+                name="customuser_bulk_inactivate",
+            ),
         ]
         return custom + urls
+
+    def bulk_inactivate_view(self, request):
+        if request.method == "POST":
+            form = UserInactiveBulkUploadForm(request.POST, request.FILES)
+
+            if not form.is_valid():
+                return render(
+                    request,
+                    "bulk_inactivate.html",
+                    {"form": form},
+                )
+
+            file = request.FILES["file"]
+            filename = file.name.lower()
+
+            if not filename.endswith(".csv"):
+                messages.error(request, "Upload only .csv files!")
+                return redirect("..")
+
+            try:
+                text_file = io.TextIOWrapper(
+                    file.file,
+                    encoding="utf-8-sig",
+                    newline="",
+                )
+                reader = csv.DictReader(text_file)
+
+                if not reader.fieldnames:
+                    messages.error(request, "CSV file is empty.")
+                    return redirect("..")
+
+                headers = [
+                    str(header)
+                    .strip()
+                    .lower()
+                    .replace(" ", "_")
+                    .replace("\ufeff", "")
+                    for header in reader.fieldnames
+                ]
+                reader.fieldnames = headers
+
+                if "employee_id" not in headers and "username" not in headers:
+                    messages.error(
+                        request,
+                        "CSV must include employee_id or username column.",
+                    )
+                    return redirect("..")
+
+                employee_ids = set()
+                usernames = set()
+
+                for row in reader:
+                    employee_id = str(row.get("employee_id") or "").strip()
+                    username = str(row.get("username") or "").strip()
+
+                    if employee_id:
+                        employee_ids.add(employee_id)
+                    if username:
+                        usernames.add(username)
+
+                queryset = CustomUser.objects.filter(is_active=True)
+                if employee_ids and usernames:
+                    queryset = queryset.filter(
+                        Q(employee_id__in=employee_ids)
+                        | Q(username__in=usernames)
+                    )
+                elif employee_ids:
+                    queryset = queryset.filter(employee_id__in=employee_ids)
+                else:
+                    queryset = queryset.filter(username__in=usernames)
+
+                updated_count = queryset.update(is_active=False)
+
+                messages.success(
+                    request,
+                    f"{updated_count} user(s) marked as inactive.",
+                )
+
+                text_file.detach()
+
+            except UnicodeDecodeError:
+                messages.error(request, "CSV must be saved as UTF-8 encoding.")
+
+            return redirect("..")
+
+        form = UserInactiveBulkUploadForm()
+        return render(
+            request,
+            "bulk_inactivate.html",
+            {"form": form},
+        )
 
     # --------------------------
 # Bulk Upload View

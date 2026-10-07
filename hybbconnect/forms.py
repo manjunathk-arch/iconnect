@@ -318,6 +318,10 @@ class UserBulkUploadForm(forms.Form):
     file = forms.FileField(label="Upload CSV File")
 
 
+class UserInactiveBulkUploadForm(forms.Form):
+    file = forms.FileField(label="Upload CSV File")
+
+
 
 # ======================================================
 # QUALITY FEEDBACK BULK UPLOAD

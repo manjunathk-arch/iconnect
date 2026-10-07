@@ -1,12 +1,16 @@
 from django.contrib.auth import get_user_model
 from django.contrib.admin.sites import AdminSite
 from django.contrib.messages.storage.fallback import FallbackStorage
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from django.test import override_settings
 from django.test import RequestFactory
+from django.urls import reverse
 
 from .admin import CustomUserAdmin
 
 
+@override_settings(ALLOWED_HOSTS=["testserver"], SECURE_SSL_REDIRECT=False)
 class CustomUserAdminActionTests(TestCase):
     def setUp(self):
         self.user_model = get_user_model()
@@ -53,3 +57,50 @@ class CustomUserAdminActionTests(TestCase):
         already_inactive_user.refresh_from_db()
         self.assertFalse(active_user.is_active)
         self.assertFalse(already_inactive_user.is_active)
+
+    def test_bulk_inactivate_csv_upload_marks_matching_users_inactive(self):
+        employee_match = self.user_model.objects.create_user(
+            username="employee-match",
+            email="employee@example.com",
+            password="password",
+            employee_id="EMP-101",
+            role="kitchen_staff",
+            is_active=True,
+        )
+        username_match = self.user_model.objects.create_user(
+            username="username-match",
+            email="username@example.com",
+            password="password",
+            employee_id="EMP-102",
+            role="kitchen_staff",
+            is_active=True,
+        )
+        untouched_user = self.user_model.objects.create_user(
+            username="untouched",
+            email="untouched@example.com",
+            password="password",
+            employee_id="EMP-103",
+            role="kitchen_staff",
+            is_active=True,
+        )
+
+        upload = SimpleUploadedFile(
+            "inactive_users.csv",
+            b"employee_id,username\nEMP-101,\n,username-match\n",
+            content_type="text/csv",
+        )
+
+        self.client.force_login(self.admin_user)
+        response = self.client.post(
+            reverse("admin:customuser_bulk_inactivate"),
+            {"file": upload},
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        employee_match.refresh_from_db()
+        username_match.refresh_from_db()
+        untouched_user.refresh_from_db()
+        self.assertFalse(employee_match.is_active)
+        self.assertFalse(username_match.is_active)
+        self.assertTrue(untouched_user.is_active)
