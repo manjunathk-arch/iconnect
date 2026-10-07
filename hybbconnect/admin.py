@@ -59,6 +59,7 @@ class CustomUserAdmin(UserAdmin):
     list_filter = ("role", "location", "is_active", "is_staff")
     search_fields = ("employee_id", "username", "email")
     ordering = ("employee_id",)
+    actions = ("mark_users_inactive",)
 
     fieldsets = UserAdmin.fieldsets + (
         ("Role & Location Details",
@@ -69,6 +70,16 @@ class CustomUserAdmin(UserAdmin):
         ("Role & Location Details",
          {"fields": ("employee_id", "role", "location")}),
     )
+
+    @admin.action(description="Mark selected users as inactive")
+    def mark_users_inactive(self, request, queryset):
+        updated_count = queryset.filter(is_active=True).update(is_active=False)
+
+        self.message_user(
+            request,
+            f"{updated_count} user(s) marked as inactive.",
+            messages.SUCCESS,
+        )
 
     # --------------------------
     # Custom URL
