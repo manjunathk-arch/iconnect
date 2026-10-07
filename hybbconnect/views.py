@@ -287,7 +287,6 @@ def mark_notification_read(request, notification_id):
     notification.is_read = True
     notification.read_at = timezone.now()
     notification.save(update_fields=["is_read", "read_at"])
-    cache.delete(f"unread_notifications:{request.user.pk}")
 
     if notification.link and notification.link.startswith("/"):
         return redirect(notification.link)
@@ -989,15 +988,12 @@ def raise_staff_log(request):
     # 🟢 Staff filtering (for dropdowns if needed)
     if user.role == "kitchen_manager" and user.location:
         # ✅ Existing behavior — unchanged
-        staff_list = CustomUser.objects.filter(role="kitchen_staff", location=user.location)
+        staff_list = CustomUser.objects.filter(role="kitchen_staff",  location=user.location)
 
     elif user.role == "cluster_manager" and hasattr(user, "cluster_manager_profile"):
         # ✅ Cluster Manager: show all staff from assigned locations
         assigned_locations = user.cluster_manager_profile.locations.all()
-        staff_list = CustomUser.objects.filter(
-            role__in=["kitchen_staff", "kitchen_manager"],
-            location__in=assigned_locations,
-        ).order_by("location__code", "role", "username")
+        staff_list = CustomUser.objects.filter(role="kitchen_staff", location__in=assigned_locations)
 
     else:
         # Fallback
