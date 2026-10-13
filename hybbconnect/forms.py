@@ -1,7 +1,9 @@
+from datetime import datetime
+
 from django import forms
 from .models import (
     Location, Ticket, KitchenLog, StaffPerformance, QualityFeedback,
-    CustomUser, OrderPhoto 
+    CustomUser, OrderPhoto, StaffRoster
 )
 
 
@@ -320,6 +322,123 @@ class UserBulkUploadForm(forms.Form):
 
 class UserInactiveBulkUploadForm(forms.Form):
     file = forms.FileField(label="Upload CSV File")
+
+
+class StaffRosterForm(forms.ModelForm):
+    SHIFT_DEFAULTS = [
+        ("BS-1|09:00", "BS-1 - 09:00 AM"),
+        ("BS-2|10:00", "BS-2 - 10:00 AM"),
+        ("BS-3|12:00", "BS-3 - 12:00 PM"),
+        ("BS-4|11:00", "BS-4 - 11:00 AM"),
+        ("BS-5|09:00", "BS-5 - 09:00 AM"),
+        ("BS-6|12:00", "BS-6 - 12:00 PM"),
+        ("BS-7|08:00", "BS-7 - 08:00 AM"),
+        ("BS-8|08:00", "BS-8 - 08:00 AM"),
+        ("BS-9|12:00", "BS-9 - 12:00 PM"),
+        ("ST-1|08:00", "ST-1 - 08:00 AM"),
+        ("ST-1|01:00", "ST-1 - 01:00 AM"),
+        ("ST-2|09:00", "ST-2 - 09:00 AM"),
+        ("ST-3|14:00", "ST-3 - 02:00 PM"),
+        ("ST-4|16:00", "ST-4 - 04:00 PM"),
+        ("ST-5|10:00", "ST-5 - 10:00 AM"),
+        ("ST-6|13:00", "ST-6 - 01:00 PM"),
+    ]
+
+    shift_template = forms.ChoiceField(
+        choices=[("", "Select shift code")] + SHIFT_DEFAULTS,
+        required=False,
+        label="Shift code",
+        widget=forms.Select(attrs={"class": "form-select"}),
+    )
+    shift_code = forms.CharField(required=False, widget=forms.HiddenInput())
+
+    class Meta:
+        model = StaffRoster
+        fields = ["location", "staff", "roster_date", "shift_type", "shift_code", "login_time"]
+        widgets = {
+            "location": forms.Select(attrs={"class": "form-select"}),
+            "staff": forms.Select(attrs={"class": "form-select"}),
+            "roster_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "shift_type": forms.Select(attrs={"class": "form-select"}),
+            "login_time": forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop("user", None)
+        self.authorized_locations = kwargs.pop("authorized_locations", Location.objects.none())
+        super().__init__(*args, **kwargs)
+
+        self.fields["location"].queryset = self.authorized_locations
+        self.fields["staff"].queryset = CustomUser.objects.none()
+
+        location_id = self.data.get("location") if self.data else None
+        if location_id:
+            self.fields["staff"].queryset = CustomUser.objects.filter(
+                role="kitchen_staff",
+                is_active=True,
+                location_id=location_id,
+                location__in=self.authorized_locations,
+            ).order_by("employee_id", "username")
+        elif self.instance.pk:
+            self.fields["staff"].queryset = CustomUser.objects.filter(
+                role="kitchen_staff",
+                location=self.instance.location,
+            ).order_by("employee_id", "username")
+            if self.instance.shift_type != StaffRoster.WEEKLY_OFF:
+                self.fields["shift_template"].initial = (
+                    f"{self.instance.shift_code}|{self.instance.login_time.strftime('%H:%M')}"
+                    if self.instance.login_time
+                    else ""
+                )
+        else:
+            self.fields["staff"].queryset = CustomUser.objects.filter(
+                role="kitchen_staff",
+                is_active=True,
+                location__in=self.authorized_locations,
+            ).order_by("location__code", "employee_id", "username")
+
+    def clean(self):
+        cleaned = super().clean()
+        location = cleaned.get("location")
+        staff = cleaned.get("staff")
+        shift_type = cleaned.get("shift_type")
+        shift_template = cleaned.get("shift_template")
+        login_time = cleaned.get("login_time")
+
+        if location and location not in self.authorized_locations:
+            raise forms.ValidationError("You are not authorized to manage this outlet.")
+
+        if staff and location and staff.location_id != location.id:
+            raise forms.ValidationError("Selected staff member does not belong to this outlet.")
+
+        if shift_type == StaffRoster.WEEKLY_OFF:
+            cleaned["login_time"] = None
+            cleaned["shift_code"] = "WO"
+            return cleaned
+
+        if not shift_template:
+            self.add_error("shift_template", "Select a shift code.")
+            return cleaned
+
+        shift_code, default_time = shift_template.split("|", 1)
+        cleaned["shift_code"] = shift_code
+        if not login_time:
+            cleaned["login_time"] = datetime.strptime(default_time, "%H:%M").time()
+
+        return cleaned
+
+    def save(self, commit=True):
+        roster = super().save(commit=False)
+        roster.shift_code = self.cleaned_data["shift_code"]
+        roster.login_time = self.cleaned_data["login_time"]
+        if self.user and not roster.created_by_id:
+            roster.created_by = self.user
+        if roster.pk and roster.is_published:
+            roster.is_published = False
+            roster.published_at = None
+        if commit:
+            roster.save()
+        return roster
 
 
 

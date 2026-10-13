@@ -18,6 +18,7 @@
             <a href="{% url 'view_kitchen_logs' %}"><i class="bi bi-journal-text"></i> Kitchen Logs</a>
             <a href="{% url 'view_quality_feedback' %}"><i class="bi bi-clipboard-check"></i> Quality Feedback</a>
             <a href="{% url 'quality_feedback_analytics' %}"><i class="bi bi-bar-chart-line"></i> Feedback Usage</a>
+            <a href="{% url 'admin_roster_management' %}"><i class="bi bi-calendar-week"></i> Roster Management</a>
             <a href="{% url 'staff_login_report' %}"><i class="bi bi-person-check"></i> Staff Login Report</a>
             <a href="{% url 'daily_update_report' %}"><i class="bi bi-chat-square-text"></i> Daily Update Report</a>
             <a href="{% url 'view_order_photos' %}"><i class="bi bi-images"></i> Order Photos</a>
@@ -39,6 +40,7 @@
             </div>
             <div class="admin-actions">
                 <a href="{% url 'quality_feedback_analytics' %}" class="btn btn-light"><i class="bi bi-graph-up"></i> Feedback usage</a>
+                <a href="{% url 'admin_roster_management' %}" class="btn btn-light"><i class="bi bi-calendar-week"></i> Roster management</a>
                 <a href="{% url 'export_users_csv' %}" class="btn export-button"><i class="bi bi-download"></i> Download user CSV</a>
             </div>
         </section>
@@ -74,6 +76,14 @@
                     <span>
                         <strong>Staff Login Report</strong>
                         <small>View daily staff login details and download CSV.</small>
+                    </span>
+                    <i class="bi bi-arrow-up-right"></i>
+                </a>
+                <a href="{% url 'admin_roster_management' %}" class="report-link-card h-100 mt-3">
+                    <span class="metric-icon yellow"><i class="bi bi-calendar-week"></i></span>
+                    <span>
+                        <strong>Roster Management</strong>
+                        <small>View weekly rosters, update missing staff, and download CSV.</small>
                     </span>
                     <i class="bi bi-arrow-up-right"></i>
                 </a>

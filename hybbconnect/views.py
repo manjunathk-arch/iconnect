@@ -18,7 +18,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.core.cache import cache
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
-from django.http import HttpResponse, HttpResponseForbidden
+from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotAllowed
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -30,10 +30,12 @@ from .forms import (
     KitchenPlayerForm,
     OrderPhotoForm,
     QualityFeedbackForm,
+    StaffRosterForm,
     StaffTimeUpdateForm,
 )
 from .models import (
     Attendance,
+    ClusterManagerProfile,
     CustomUser,
     DailyStaffLogin,
     KitchenLog,
@@ -43,6 +45,7 @@ from .models import (
     QualityFeedback,
     SalarySlip,
     StaffPerformance,
+    StaffRoster,
     StaffTimeUpdate,
     Ticket,
 )
@@ -214,6 +217,60 @@ def is_admin(user):
     return user.role == "admin"
 
 
+def is_roster_manager(user):
+    return user.role in ["kitchen_manager", "cluster_manager", "admin"]
+
+
+def get_authorized_roster_locations(user):
+    if user.role == "admin":
+        return Location.objects.all()
+
+    if user.role == "kitchen_manager" and user.location_id:
+        return Location.objects.filter(pk=user.location_id)
+
+    if user.role == "cluster_manager" and hasattr(user, "cluster_manager_profile"):
+        return user.cluster_manager_profile.locations.all()
+
+    return Location.objects.none()
+
+
+def get_week_start(raw_date=None):
+    selected_date = timezone.localdate()
+    if raw_date:
+        try:
+            selected_date = datetime.strptime(raw_date, "%Y-%m-%d").date()
+        except ValueError:
+            selected_date = timezone.localdate()
+    return selected_date - timedelta(days=selected_date.weekday())
+
+
+def build_roster_week_rows(staff_queryset, roster_queryset, week_dates):
+    roster_map = {
+        (roster.staff_id, roster.roster_date): roster
+        for roster in roster_queryset
+    }
+    rows = []
+    for staff in staff_queryset:
+        rows.append({
+            "staff": staff,
+            "cells": [
+                {
+                    "date": day,
+                    "roster": roster_map.get((staff.id, day)),
+                }
+                for day in week_dates
+            ],
+        })
+    return rows
+
+
+def get_roster_return_url(request, default_name="manager_weekly_roster"):
+    next_url = request.POST.get("next") or request.GET.get("next")
+    if next_url and next_url.startswith("/"):
+        return next_url
+    return reverse(default_name)
+
+
 # --------------------------
 # ✅ Custom Decorator (for Staff Only)
 # --------------------------
@@ -355,6 +412,31 @@ def staff_dashboard(request):
         date__gte=timezone.localdate() - timedelta(days=6)
     ).order_by("-date")
 
+    today_roster = StaffRoster.objects.select_related("location").filter(
+        staff=request.user,
+        roster_date=timezone.localdate(),
+        is_published=True,
+    ).first()
+
+    week_start = get_week_start()
+    week_dates = [week_start + timedelta(days=day) for day in range(7)]
+    weekly_rosters = StaffRoster.objects.select_related("location").filter(
+        staff=request.user,
+        roster_date__range=(week_dates[0], week_dates[-1]),
+        is_published=True,
+    )
+    weekly_roster_map = {
+        roster.roster_date: roster
+        for roster in weekly_rosters
+    }
+    staff_week_cells = [
+        {
+            "date": day,
+            "roster": weekly_roster_map.get(day),
+        }
+        for day in week_dates
+    ]
+
     context = {
         "performance_data": performance_data,
         "logs": logs,
@@ -362,9 +444,375 @@ def staff_dashboard(request):
         "user_location": request.user.location,
         "today_attendance": today_attendance,
         "last_7_days_attendance": last_7_days_attendance,
+        "today_roster": today_roster,
+        "staff_week_cells": staff_week_cells,
+        "week_start": week_start,
+        "week_end": week_dates[-1],
     }
 
     return render(request, "staff_dashboard.html", context)
+
+
+@login_required
+@user_passes_test(is_roster_manager)
+def manager_weekly_roster(request):
+    authorized_locations = get_authorized_roster_locations(request.user)
+    selected_location_id = request.GET.get("location") or authorized_locations.values_list("id", flat=True).first()
+    week_start = get_week_start(request.GET.get("week"))
+    week_dates = [week_start + timedelta(days=day) for day in range(7)]
+    employee_name = request.GET.get("employee_name", "").strip()
+    employee_id = request.GET.get("employee_id", "").strip()
+    form = StaffRosterForm(user=request.user, authorized_locations=authorized_locations)
+    form.fields["roster_date"].initial = timezone.localdate()
+
+    if not selected_location_id:
+        return render(request, "roster/manager_weekly_roster.html", {
+            "authorized_locations": authorized_locations,
+            "selected_location": None,
+            "week_start": week_start,
+            "week_end": week_dates[-1],
+            "week_dates": week_dates,
+            "rows": [],
+            "form": form,
+            "employee_name": employee_name,
+            "employee_id": employee_id,
+            "previous_week": week_start - timedelta(days=7),
+            "next_week": week_start + timedelta(days=7),
+        })
+
+    selected_location = get_object_or_404(authorized_locations, pk=selected_location_id)
+
+    staff_queryset = CustomUser.objects.filter(
+        role="kitchen_staff",
+        is_active=True,
+        location=selected_location,
+    ).order_by("employee_id", "username")
+
+    if employee_name:
+        staff_queryset = staff_queryset.filter(
+            Q(username__icontains=employee_name)
+            | Q(first_name__icontains=employee_name)
+            | Q(last_name__icontains=employee_name)
+        )
+
+    if employee_id:
+        staff_queryset = staff_queryset.filter(employee_id__icontains=employee_id)
+
+    roster_queryset = StaffRoster.objects.select_related("staff", "location").filter(
+        location=selected_location,
+        staff__in=staff_queryset,
+        roster_date__range=(week_dates[0], week_dates[-1]),
+    )
+    rows = build_roster_week_rows(staff_queryset, roster_queryset, week_dates)
+
+    form.fields["location"].initial = selected_location
+
+    return render(request, "roster/manager_weekly_roster.html", {
+        "authorized_locations": authorized_locations,
+        "selected_location": selected_location,
+        "week_start": week_start,
+        "week_end": week_dates[-1],
+        "week_dates": week_dates,
+        "rows": rows,
+        "form": form,
+        "employee_name": employee_name,
+        "employee_id": employee_id,
+        "previous_week": week_start - timedelta(days=7),
+        "next_week": week_start + timedelta(days=7),
+    })
+
+
+@login_required
+@user_passes_test(is_admin)
+def admin_roster_management(request):
+    week_start = get_week_start(request.GET.get("week"))
+    week_dates = [week_start + timedelta(days=day) for day in range(7)]
+    location_id = request.GET.get("location", "").strip()
+    employee_name = request.GET.get("employee_name", "").strip()
+    employee_id = request.GET.get("employee_id", "").strip()
+
+    staff_queryset = CustomUser.objects.select_related("location").filter(
+        role="kitchen_staff",
+        is_active=True,
+    ).order_by("location__code", "employee_id", "username")
+
+    if location_id:
+        staff_queryset = staff_queryset.filter(location_id=location_id)
+
+    if employee_name:
+        staff_queryset = staff_queryset.filter(
+            Q(username__icontains=employee_name)
+            | Q(first_name__icontains=employee_name)
+            | Q(last_name__icontains=employee_name)
+        )
+
+    if employee_id:
+        staff_queryset = staff_queryset.filter(employee_id__icontains=employee_id)
+
+    roster_queryset = StaffRoster.objects.select_related("staff", "location").filter(
+        staff__in=staff_queryset,
+        roster_date__range=(week_dates[0], week_dates[-1]),
+    )
+    rows = build_roster_week_rows(staff_queryset, roster_queryset, week_dates)
+    for row in rows:
+        row["is_updated"] = any(cell["roster"] for cell in row["cells"])
+
+    authorized_locations = get_authorized_roster_locations(request.user)
+    form = StaffRosterForm(user=request.user, authorized_locations=authorized_locations)
+    form.fields["roster_date"].initial = week_start
+
+    return render(request, "roster/admin_roster_management.html", {
+        "locations": Location.objects.order_by("code"),
+        "selected_location_id": location_id,
+        "week_start": week_start,
+        "week_end": week_dates[-1],
+        "week_dates": week_dates,
+        "rows": rows,
+        "form": form,
+        "employee_name": employee_name,
+        "employee_id": employee_id,
+        "previous_week": week_start - timedelta(days=7),
+        "next_week": week_start + timedelta(days=7),
+    })
+
+@login_required
+@user_passes_test(is_roster_manager)
+def export_admin_roster_csv(request):
+    week_start = get_week_start(request.GET.get("week"))
+    week_end = week_start + timedelta(days=6)
+    authorized_locations = get_authorized_roster_locations(request.user)
+
+    # Get all active kitchen staff
+    staff_queryset = (
+        CustomUser.objects
+        .select_related("location")
+        .filter(
+            role="kitchen_staff",
+            is_active=True,
+            location__in=authorized_locations,
+        )
+        .order_by("location__code", "employee_id", "username")
+    )
+
+    # Optional location filter
+    location_id = request.GET.get("location", "").strip()
+    if location_id:
+        staff_queryset = staff_queryset.filter(
+            location_id=location_id
+        )
+
+    # Fetch all rosters for the selected week
+    rosters = StaffRoster.objects.filter(
+        staff__in=staff_queryset,
+        roster_date__range=(week_start, week_end),
+    ).order_by("roster_date")
+
+    # Map roster by employee and date
+    roster_map = {
+        (roster.staff_id, roster.roster_date): roster
+        for roster in rosters
+    }
+
+    # Prepare CSV response
+    response = HttpResponse(
+        content_type="text/csv; charset=utf-8"
+    )
+    response["Content-Disposition"] = (
+        f'attachment; filename="weekly_roster_{week_start:%Y-%m-%d}.csv"'
+    )
+
+    writer = csv.writer(response)
+
+    # CSV headers
+    writer.writerow([
+        "Employee ID",
+        "Employee Name",
+        "Location",
+        "Date",
+        "Roster",
+        "Login Time",
+        "Roster Status",
+    ])
+
+    # Write one row per employee per day
+    for staff in staff_queryset:
+        for day_offset in range(7):
+            roster_date = week_start + timedelta(days=day_offset)
+
+            roster = roster_map.get(
+                (staff.id, roster_date)
+            )
+
+            if roster:
+                roster_text = (
+                    "Weekly Off"
+                    if roster.shift_type == StaffRoster.WEEKLY_OFF
+                    else roster.shift_code or ""
+                )
+
+                login_time = (
+                    roster.login_time.strftime("%H:%M")
+                    if roster.login_time
+                    and roster.shift_type != StaffRoster.WEEKLY_OFF
+                    else ""
+                )
+
+                roster_status = "Updated"
+            else:
+                roster_text = ""
+                login_time = ""
+                roster_status = "Not Updated"
+
+            writer.writerow([
+                staff.employee_id,
+                staff.get_full_name().strip() or staff.username,
+                staff.location.name if staff.location else "",
+                roster_date.strftime("%d/%m/%Y"),
+                roster_text,
+                login_time,
+                roster_status,
+            ])
+
+    return response
+
+@login_required
+@user_passes_test(is_roster_manager)
+def create_roster_assignment(request):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    authorized_locations = get_authorized_roster_locations(request.user)
+    roster_instance = None
+    staff_id = request.POST.get("staff")
+    roster_date = request.POST.get("roster_date")
+    if staff_id and roster_date:
+        roster_instance = StaffRoster.objects.filter(
+            staff_id=staff_id,
+            roster_date=roster_date,
+            location__in=authorized_locations,
+        ).first()
+
+    form = StaffRosterForm(
+        request.POST,
+        instance=roster_instance,
+        user=request.user,
+        authorized_locations=authorized_locations,
+    )
+
+    if form.is_valid():
+        form.save()
+        messages.success(request, "Roster assignment saved as draft.")
+    else:
+        messages.error(request, "Roster assignment could not be saved. Please check the form.")
+
+    return redirect(get_roster_return_url(request))
+
+
+@login_required
+@user_passes_test(is_roster_manager)
+def edit_roster_assignment(request, roster_id):
+    authorized_locations = get_authorized_roster_locations(request.user)
+    roster = get_object_or_404(
+        StaffRoster.objects.select_related("staff", "location"),
+        pk=roster_id,
+        location__in=authorized_locations,
+    )
+
+    if request.method == "POST":
+        form = StaffRosterForm(
+            request.POST,
+            instance=roster,
+            user=request.user,
+            authorized_locations=authorized_locations,
+        )
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Roster assignment updated as draft.")
+            return redirect(get_roster_return_url(request))
+        messages.error(request, "Roster assignment could not be updated.")
+    else:
+        form = StaffRosterForm(instance=roster, user=request.user, authorized_locations=authorized_locations)
+
+    return render(request, "roster/roster_form.html", {
+        "form": form,
+        "roster": roster,
+        "next_url": get_roster_return_url(request),
+    })
+
+
+@login_required
+@user_passes_test(is_roster_manager)
+def delete_roster_assignment(request, roster_id):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    authorized_locations = get_authorized_roster_locations(request.user)
+    roster = get_object_or_404(
+        StaffRoster,
+        pk=roster_id,
+        location__in=authorized_locations,
+        is_published=False,
+    )
+    roster.delete()
+    messages.success(request, "Draft roster assignment deleted.")
+    return redirect(get_roster_return_url(request))
+
+
+@login_required
+@user_passes_test(is_roster_manager)
+def publish_roster_assignment(request, roster_id):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    authorized_locations = get_authorized_roster_locations(request.user)
+    roster = get_object_or_404(StaffRoster, pk=roster_id, location__in=authorized_locations)
+    roster.publish()
+    messages.success(request, "Roster assignment published.")
+    return redirect(get_roster_return_url(request))
+
+
+@login_required
+@user_passes_test(is_roster_manager)
+def publish_weekly_roster(request):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    authorized_locations = get_authorized_roster_locations(request.user)
+    selected_location = get_object_or_404(authorized_locations, pk=request.POST.get("location"))
+    week_start = get_week_start(request.POST.get("week"))
+    week_end = week_start + timedelta(days=6)
+    now = timezone.now()
+
+    updated = StaffRoster.objects.filter(
+        location=selected_location,
+        roster_date__range=(week_start, week_end),
+        is_published=False,
+    ).update(is_published=True, published_at=now, updated_at=now)
+
+    messages.success(request, f"Published {updated} draft roster assignment(s) for the week.")
+    return redirect(f"{reverse('manager_weekly_roster')}?location={selected_location.id}&week={week_start:%Y-%m-%d}")
+
+
+@login_required
+@user_passes_test(is_kitchen_staff)
+def staff_weekly_roster(request):
+    week_start = get_week_start(request.GET.get("week"))
+    week_dates = [week_start + timedelta(days=day) for day in range(7)]
+    rosters = StaffRoster.objects.select_related("location").filter(
+        staff=request.user,
+        roster_date__range=(week_dates[0], week_dates[-1]),
+        is_published=True,
+    )
+    roster_map = {roster.roster_date: roster for roster in rosters}
+    cells = [{"date": day, "roster": roster_map.get(day)} for day in week_dates]
+
+    return render(request, "roster/staff_weekly_roster.html", {
+        "week_start": week_start,
+        "week_end": week_dates[-1],
+        "cells": cells,
+        "previous_week": week_start - timedelta(days=7),
+        "next_week": week_start + timedelta(days=7),
+    })
 
 # --------------------------
 # ✅ Staff Confirms Final Closure
@@ -1495,37 +1943,48 @@ def view_kitchen_logs(request):
 # ✅ Cluster Manager Dashboard (Tickets)
 # --------------------------
 
+
+# --------------------------
+# Cluster Manager Dashboard (Tickets)
+# --------------------------
+
 @login_required
 @user_passes_test(lambda u: u.role == "cluster_manager")
 def cluster_dashboard(request):
     user = request.user
 
-    # ✅ Assigned locations for this cluster manager
-    assigned_locations = []
+    # Assigned locations for this Cluster Manager
     if hasattr(user, "cluster_manager_profile"):
-        assigned_locations = user.cluster_manager_profile.locations.all()
+        assigned_locations = (
+            user.cluster_manager_profile.locations.all()
+        )
+    else:
+        assigned_locations = Location.objects.none()
+
     assigned_location_codes = list(
         assigned_locations.values_list("code", flat=True)
     )
 
-    # ✅ Kitchen Managers in those locations
+    # Kitchen Managers in assigned locations
     kitchen_managers = CustomUser.objects.filter(
         role="kitchen_manager",
         location__in=assigned_locations
     )
 
-    # ✅ Kitchen Staff in those locations
+    # Kitchen Staff in assigned locations
     kitchen_staff = CustomUser.objects.filter(
         role="kitchen_staff",
         location__in=assigned_locations
     )
 
-    # ✅ iConnect Tickets in assigned locations
+    # iConnect Tickets in assigned locations
     tickets = hide_owner_only_tickets(
-        Ticket.objects.filter(location__in=assigned_locations)
+        Ticket.objects.filter(
+            location__in=assigned_locations
+        )
     ).order_by("-created_at")
 
-    # ✅ Recent kitchen logs
+    # Recent kitchen logs
     kitchen_logs = KitchenLog.objects.filter(
         location__in=assigned_location_codes
     ).order_by("-created_at")[:10]
@@ -1539,9 +1998,14 @@ def cluster_dashboard(request):
         "kitchen_logs": kitchen_logs,
         "recent_log_count": len(kitchen_logs),
         "ticket_count": tickets.count(),
-        "tickets": tickets,  # 👈 Added
+        "tickets": tickets,
     }
-    return render(request, "cluster_dashboard.html", context)
+
+    return render(
+        request,
+        "cluster_dashboard.html",
+        context
+    )
 
 # ✅ Cluster Manager closes a reassigned ticket
 @login_required

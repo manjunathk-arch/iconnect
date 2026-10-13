@@ -17,6 +17,7 @@ from .models import (
     OrderPhoto,
     Notification,
     DailyStaffLogin,
+    StaffRoster,
 )
 
 from django.contrib.auth import get_user_model
@@ -970,5 +971,23 @@ class DailyStaffLoginAdmin(admin.ModelAdmin):
     list_display = ("user", "login_date", "first_login_at", "last_login_at", "login_count")
     list_filter = ("login_date", "user__location")
     search_fields = ("user__username", "user__employee_id")
+
+
+@admin.register(StaffRoster)
+class StaffRosterAdmin(admin.ModelAdmin):
+    list_display = (
+        "staff",
+        "location",
+        "roster_date",
+        "shift_code",
+        "shift_type",
+        "login_time",
+        "is_published",
+        "created_by",
+    )
+    list_filter = ("location", "shift_type", "is_published", "roster_date")
+    search_fields = ("staff__username", "staff__employee_id", "shift_code")
+    date_hierarchy = "roster_date"
+    autocomplete_fields = ("staff", "location", "created_by")
 
 

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Weekly Staff Roster{% endblock %}
+{% block content %}
+<main class="roster-page">
+  <div class="roster-header">
+    <div>
+      <p class="eyebrow">WEEKLY ROSTER</p>
+      <h1>{% if selected_location %}{{ selected_location.name }}{% else %}No outlet assigned{% endif %}</h1>
+      <p>{{ week_start|date:"d M Y" }} - {{ week_end|date:"d M Y" }}</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="{% url 'dashboard' %}"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+  </div>
+
+  {% if not selected_location %}
+  <section class="roster-panel empty-roster-state">
+    <h2>No outlets available</h2>
+    <p>Your account is not assigned to any outlet for roster management. Please contact an admin to assign a location before creating weekly rosters.</p>
+  </section>
+  {% else %}
+  <section class="roster-panel">
+    <form class="filter-grid" method="get">
+      <label>Outlet {{ form.location }}</label>
+      <label>Week <input class="form-control" type="date" name="week" value="{{ week_start|date:'Y-m-d' }}"></label>
+      <label>Employee name <input class="form-control" type="text" name="employee_name" value="{{ employee_name }}"></label>
+      <label>Employee ID <input class="form-control" type="text" name="employee_id" value="{{ employee_id }}"></label>
+      <button class="btn btn-success" type="submit"><i class="bi bi-funnel"></i> Filter</button>
+    </form>
+    <div class="week-nav">
+      <a href="?location={{ selected_location.id }}&week={{ previous_week|date:'Y-m-d' }}">Previous week</a>
+      <a href="?location={{ selected_location.id }}&week={{ next_week|date:'Y-m-d' }}">Next week</a>
+      <a class="btn btn-outline-success btn-sm" href="{% url 'export_admin_roster_csv' %}?location={{ selected_location.id }}&week={{ week_start|date:'Y-m-d' }}"><i class="bi bi-download"></i> Download CSV</a>
+      <form method="post" action="{% url 'publish_weekly_roster' %}" onsubmit="return confirm('Publish all draft assignments for this outlet and week?');">
+        {% csrf_token %}
+        <input type="hidden" name="location" value="{{ selected_location.id }}">
+        <input type="hidden" name="week" value="{{ week_start|date:'Y-m-d' }}">
+        <button class="btn btn-warning" type="submit"><i class="bi bi-megaphone"></i> Publish Week</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="roster-panel">
+    <h2>Add assignment</h2>
+    <form class="assignment-grid" method="post" action="{% url 'create_roster_assignment' %}">
+      {% csrf_token %}
+      <label>Outlet {{ form.location }}</label>
+      <label>Staff {{ form.staff }}</label>
+      <label>Date {{ form.roster_date }}</label>
+      <label>Shift type {{ form.shift_type }}</label>
+      <label>Shift code {{ form.shift_template }}</label>
+      <label>Login time {{ form.login_time }}</label>
+      <button class="btn btn-success" type="submit"><i class="bi bi-save"></i> Save Draft</button>
+    </form>
+    <p class="hint">The two ST-1 source-sheet defaults are kept separate: ST-1 - 08:00 AM and ST-1 - 01:00 AM. Managers may adjust login time before saving.</p>
+  </section>
+
+  <section class="roster-panel">
+    <div class="table-responsive">
+      <table class="table roster-table align-middle">
+        <thead><tr><th>Employee</th>{% for day in week_dates %}<th>{{ day|date:"D d M" }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td><strong>{{ row.staff.username }}</strong><small>{{ row.staff.employee_id }}</small></td>
+            {% for cell in row.cells %}
+            <td>
+              {% if cell.roster %}
+                <div class="shift-box {% if cell.roster.is_published %}published{% else %}draft{% endif %}">
+                  {% if cell.roster.shift_type == "weekly_off" %}
+                    <strong>Weekly Off</strong>
+                  {% else %}
+                    <strong>{{ cell.roster.shift_code }}</strong>
+                    <span>{{ cell.roster.login_time|time:"h:i A" }}</span>
+                  {% endif %}
+                  <small>{{ cell.roster.get_shift_type_display }} | {% if cell.roster.is_published %}Published{% else %}Draft{% endif %}</small>
+                  <div class="shift-actions">
+                    <a href="{% url 'edit_roster_assignment' cell.roster.id %}">Edit</a>
+                    {% if not cell.roster.is_published %}
+                      <form method="post" action="{% url 'publish_roster_assignment' cell.roster.id %}" onsubmit="return confirm('Publish this assignment?');">{% csrf_token %}<button type="submit">Publish</button></form>
+                      <form method="post" action="{% url 'delete_roster_assignment' cell.roster.id %}" onsubmit="return confirm('Delete this draft assignment?');">{% csrf_token %}<button type="submit">Delete</button></form>
+                    {% endif %}
+                  </div>
+                </div>
+              {% else %}
+                <span class="empty-cell">No assignment</span>
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% empty %}
+          <tr><td colspan="8" class="text-center text-muted">No eligible staff found for this outlet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+</main>
+<script>
+  const shiftDefaults = Object.fromEntries(Array.from(document.querySelectorAll('[name="shift_template"] option')).map((option) => [option.value, option.value.split('|')[1]]));
+  document.querySelectorAll('[name="shift_template"]').forEach((select) => {
+    select.addEventListener('change', () => {
+      const login = document.querySelector('[name="login_time"]');
+      if (login && shiftDefaults[select.value]) login.value = shiftDefaults[select.value];
+    });
+  });
+  document.querySelectorAll('[name="shift_type"]').forEach((select) => {
+    select.addEventListener('change', () => {
+      const off = select.value === 'weekly_off';
+      document.querySelector('[name="shift_template"]').disabled = off;
+      document.querySelector('[name="login_time"]').disabled = off;
+    });
+  });
+</script>
+<style>.roster-page{padding:30px;background:#f6f8f4;min-height:calc(100vh - 76px)}.roster-header{display:flex;justify-content:space-between;gap:18px;align-items:center;background:#174c36;color:#fff;border-radius:16px;padding:26px 30px;margin-bottom:22px}.roster-header h1{margin:0;font-size:1.8rem}.roster-header p{margin:4px 0 0;color:#dceadb}.eyebrow{font-size:.72rem;letter-spacing:.13em;font-weight:700;color:#f4c542;margin:0 0 6px}.roster-panel{background:#fff;border:1px solid #e0eadb;border-radius:12px;padding:20px;margin-bottom:18px}.empty-roster-state h2{margin:0 0 8px;color:#243326;font-size:1.2rem}.empty-roster-state p{margin:0;color:#637061;max-width:680px}.filter-grid,.assignment-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr)) auto;gap:14px;align-items:end}.assignment-grid{grid-template-columns:repeat(3,minmax(170px,1fr)) auto}.filter-grid label,.assignment-grid label{font-size:.78rem;font-weight:700;color:#5d6f62;text-transform:uppercase}.week-nav{display:flex;gap:12px;align-items:center;justify-content:flex-end;margin-top:14px}.week-nav a{color:#17643d;font-weight:700;text-decoration:none}.hint{margin:12px 0 0;color:#6b786f;font-size:.86rem}.roster-table{font-size:.86rem}.roster-table th{background:#f5f9ef;color:#657466;font-size:.75rem;text-transform:uppercase;white-space:nowrap}.roster-table td:first-child{min-width:170px}.roster-table td:first-child small{display:block;color:#71806f}.shift-box{border:1px solid #dce7d9;border-left:4px solid #b5c6b0;border-radius:8px;padding:9px;min-width:135px;background:#fbfdf9}.shift-box.published{border-left-color:#198754}.shift-box.draft{border-left-color:#f4c542}.shift-box strong,.shift-box span,.shift-box small{display:block}.shift-box small{color:#6f7e70;font-size:.72rem}.empty-cell{color:#a1aaa0;font-size:.8rem}.shift-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}.shift-actions a,.shift-actions button{border:0;background:transparent;color:#17643d;font-size:.75rem;font-weight:700;padding:0;text-decoration:none}@media(max-width:900px){.roster-header{align-items:flex-start;flex-direction:column}.filter-grid,.assignment-grid{grid-template-columns:1fr}.roster-table{min-width:980px}.week-nav{justify-content:flex-start;flex-wrap:wrap}}</style>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}Admin Roster Management{% endblock %}
+{% block content %}
+<main class="admin-roster">
+  <section class="roster-hero">
+    <div>
+      <p class="eyebrow">ADMIN ROSTER MANAGEMENT</p>
+      <h1>Weekly staff roster</h1>
+      <p>{{ week_start|date:"d M Y" }} - {{ week_end|date:"d M Y" }}</p>
+    </div>
+    <div class="hero-actions">
+      <a class="btn btn-light" href="{% url 'export_admin_roster_csv' %}?week={{ week_start|date:'Y-m-d' }}{% if selected_location_id %}&location={{ selected_location_id }}{% endif %}"><i class="bi bi-download"></i> Download CSV</a>
+      <a class="btn btn-outline-light" href="{% url 'admin_dashboard' %}"><i class="bi bi-arrow-left"></i> Dashboard</a>
+    </div>
+  </section>
+
+  <section class="roster-panel">
+    <form class="filter-grid" method="get">
+      <label>Week <input class="form-control" type="date" name="week" value="{{ week_start|date:'Y-m-d' }}"></label>
+      <label>Location
+        <select class="form-select" name="location">
+          <option value="">All locations</option>
+          {% for location in locations %}
+            <option value="{{ location.id }}" {% if selected_location_id == location.id|stringformat:"s" %}selected{% endif %}>{{ location.code }} - {{ location.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label>Employee name <input class="form-control" type="text" name="employee_name" value="{{ employee_name }}"></label>
+      <label>Employee ID <input class="form-control" type="text" name="employee_id" value="{{ employee_id }}"></label>
+      <button class="btn btn-success" type="submit"><i class="bi bi-funnel"></i> Filter</button>
+    </form>
+    <div class="week-nav">
+      <a href="?week={{ previous_week|date:'Y-m-d' }}{% if selected_location_id %}&location={{ selected_location_id }}{% endif %}">Previous week</a>
+      <a href="?week={{ next_week|date:'Y-m-d' }}{% if selected_location_id %}&location={{ selected_location_id }}{% endif %}">Next week</a>
+    </div>
+  </section>
+
+  <section class="roster-panel">
+    <h2>Assign or update roster</h2>
+    <form class="assignment-grid" method="post" action="{% url 'create_roster_assignment' %}">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}">
+      <label>Outlet {{ form.location }}</label>
+      <label>Staff {{ form.staff }}</label>
+      <label>Date {{ form.roster_date }}</label>
+      <label>Shift type {{ form.shift_type }}</label>
+      <label>Shift code {{ form.shift_template }}</label>
+      <label>Login time {{ form.login_time }}</label>
+      <button class="btn btn-success" type="submit"><i class="bi bi-save"></i> Save Draft</button>
+    </form>
+    <p class="hint">Active kitchen staff with no roster anywhere in this selected week are marked as Not Updated and included in the CSV.</p>
+  </section>
+
+  <section class="roster-panel">
+    <div class="table-responsive">
+      <table class="table roster-table align-middle">
+        <thead><tr><th>Status</th><th>Employee</th><th>Location</th>{% for day in week_dates %}<th>{{ day|date:"D d M" }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for row in rows %}
+          <tr class="{% if not row.is_updated %}missing-week{% endif %}">
+            <td>{% if row.is_updated %}<span class="status updated">Updated</span>{% else %}<span class="status missing">Not Updated</span>{% endif %}</td>
+            <td><strong>{{ row.staff.username }}</strong><small>{{ row.staff.employee_id }}</small></td>
+            <td>{{ row.staff.location.name|default:"No location" }}</td>
+            {% for cell in row.cells %}
+            <td>
+              {% if cell.roster %}
+                <div class="shift-box {% if cell.roster.is_published %}published{% else %}draft{% endif %}">
+                  {% if cell.roster.shift_type == "weekly_off" %}
+                    <strong>Weekly Off</strong>
+                  {% else %}
+                    <strong>{{ cell.roster.shift_code }}</strong>
+                    <span>{{ cell.roster.login_time|time:"h:i A" }}</span>
+                  {% endif %}
+                  <small>{% if cell.roster.is_published %}Published{% else %}Draft{% endif %}</small>
+                  <div class="shift-actions">
+                    <a href="{% url 'edit_roster_assignment' cell.roster.id %}?next={{ request.get_full_path|urlencode }}">Edit</a>
+                    {% if not cell.roster.is_published %}
+                      <form method="post" action="{% url 'publish_roster_assignment' cell.roster.id %}">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button type="submit">Publish</button></form>
+                      <form method="post" action="{% url 'delete_roster_assignment' cell.roster.id %}" onsubmit="return confirm('Delete this draft assignment?');">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button type="submit">Delete</button></form>
+                    {% endif %}
+                  </div>
+                </div>
+              {% else %}
+                <span class="empty-cell">Blank</span>
+              {% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% empty %}
+          <tr><td colspan="10" class="text-center text-muted">No active kitchen staff found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+<script>
+  const shiftDefaults = Object.fromEntries(Array.from(document.querySelectorAll('[name="shift_template"] option')).map((option) => [option.value, option.value.split('|')[1]]));
+  document.querySelector('[name="shift_template"]').addEventListener('change', (event) => {
+    const login = document.querySelector('[name="login_time"]');
+    if (login && shiftDefaults[event.target.value]) login.value = shiftDefaults[event.target.value];
+  });
+</script>
+<style>.admin-roster{padding:30px;background:#f8faf5;min-height:calc(100vh - 76px)}.roster-hero{display:flex;justify-content:space-between;gap:18px;align-items:center;background:linear-gradient(115deg,#164d34,#348654);color:#fff;border-radius:18px;padding:28px 32px;margin-bottom:22px}.roster-hero h1{font-size:1.85rem;margin:0 0 6px}.roster-hero p{margin:0;color:#e5f1e5}.eyebrow{font-size:.72rem;letter-spacing:.13em;font-weight:700;color:#f6d95e;margin:0 0 7px}.hero-actions{display:flex;gap:10px;flex-wrap:wrap}.roster-panel{background:#fff;border:1px solid #e0eadb;border-radius:12px;padding:20px;margin-bottom:18px}.filter-grid,.assignment-grid{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr)) auto;gap:14px;align-items:end}.assignment-grid{grid-template-columns:repeat(3,minmax(170px,1fr)) auto}.filter-grid label,.assignment-grid label{font-size:.78rem;font-weight:700;color:#5d6f62;text-transform:uppercase}.week-nav{display:flex;gap:14px;margin-top:14px}.week-nav a{color:#17643d;font-weight:700;text-decoration:none}.hint{margin:12px 0 0;color:#6b786f;font-size:.86rem}.roster-table{font-size:.84rem}.roster-table th{background:#f5f9ef;color:#657466;font-size:.75rem;text-transform:uppercase;white-space:nowrap}.missing-week td{background:#fff8df}.status{display:inline-block;border-radius:999px;padding:5px 9px;font-size:.74rem;font-weight:700}.status.updated{background:#dcf3df;color:#237242}.status.missing{background:#fff0c9;color:#916400}.roster-table td:nth-child(2) small{display:block;color:#71806f}.shift-box{border:1px solid #dce7d9;border-left:4px solid #b5c6b0;border-radius:8px;padding:9px;min-width:130px;background:#fbfdf9}.shift-box.published{border-left-color:#198754}.shift-box.draft{border-left-color:#f4c542}.shift-box strong,.shift-box span,.shift-box small{display:block}.shift-box small{color:#6f7e70;font-size:.72rem}.empty-cell{color:#a1aaa0;font-size:.8rem}.shift-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}.shift-actions a,.shift-actions button{border:0;background:transparent;color:#17643d;font-size:.75rem;font-weight:700;padding:0;text-decoration:none}@media(max-width:900px){.roster-hero{align-items:flex-start;flex-direction:column}.filter-grid,.assignment-grid{grid-template-columns:1fr}.roster-table{min-width:1120px}}</style>
+{% endblock %}

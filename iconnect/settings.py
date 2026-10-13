@@ -340,7 +340,7 @@ if CUSTOM_DOMAIN:
 if not DEBUG:
 
     # HTTPS
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = False
 
     # Cookies only sent over HTTPS
     SESSION_COOKIE_SECURE = True

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}My Weekly Roster{% endblock %}
+{% block content %}
+<main class="staff-roster">
+  <section class="staff-roster-hero">
+    <div>
+      <p class="eyebrow">MY WEEKLY ROSTER</p>
+      <h1>{{ week_start|date:"d M Y" }} - {{ week_end|date:"d M Y" }}</h1>
+      <p>Published assignments only. Scheduled login time is separate from attendance punch-in.</p>
+    </div>
+    <a class="btn btn-outline-light" href="{% url 'staff_dashboard' %}"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+  </section>
+  <div class="week-links">
+    <a href="?week={{ previous_week|date:'Y-m-d' }}">Previous week</a>
+    <a href="?week={{ next_week|date:'Y-m-d' }}">Next week</a>
+  </div>
+  <section class="roster-days">
+    {% for cell in cells %}
+    <article class="day-card">
+      <span>{{ cell.date|date:"D" }}</span>
+      <h2>{{ cell.date|date:"d M" }}</h2>
+      {% if cell.roster %}
+        {% if cell.roster.shift_type == "weekly_off" %}
+          <strong>Weekly Off</strong>
+          <p>No login time</p>
+        {% else %}
+          <strong>{{ cell.roster.login_time|time:"h:i A" }}</strong>
+          <p>{{ cell.roster.shift_code }} - {{ cell.roster.get_shift_type_display }}</p>
+        {% endif %}
+        <small>{{ cell.roster.location.name }}</small>
+      {% else %}
+        <strong class="muted">Not published</strong>
+        <p>No roster visible for this day.</p>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </section>
+</main>
+<style>.staff-roster{padding:30px;background:#f7faf5;min-height:calc(100vh - 76px)}.staff-roster-hero{background:linear-gradient(115deg,#174c36,#348654);color:#fff;border-radius:18px;padding:28px 32px;display:flex;justify-content:space-between;gap:18px;align-items:center}.eyebrow{font-size:.72rem;font-weight:700;letter-spacing:.13em;color:#f6d95e;margin:0 0 7px}.staff-roster-hero h1{font-size:1.75rem;margin:0 0 6px}.staff-roster-hero p{margin:0;color:#e4f1e5}.week-links{display:flex;gap:14px;margin:20px 0}.week-links a{color:#17643d;font-weight:700;text-decoration:none}.roster-days{display:grid;grid-template-columns:repeat(7,1fr);gap:14px}.day-card{background:#fff;border:1px solid #e0eadb;border-radius:12px;padding:18px;min-height:165px}.day-card span{color:#6f8172;font-size:.78rem;font-weight:700;text-transform:uppercase}.day-card h2{color:#174c36;font-size:1.1rem;margin:4px 0 18px}.day-card strong{display:block;color:#173f2f;font-size:1.35rem}.day-card strong.muted{color:#8b968a;font-size:1rem}.day-card p,.day-card small{display:block;color:#657764;margin:5px 0 0}@media(max-width:1100px){.roster-days{grid-template-columns:repeat(3,1fr)}}@media(max-width:767px){.staff-roster{padding:18px}.staff-roster-hero{align-items:flex-start;flex-direction:column;padding:24px}.roster-days{grid-template-columns:1fr}}</style>
+{% endblock %}

@@ -2,6 +2,8 @@
 
 from django.db import models
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth import get_user_model
@@ -323,6 +325,99 @@ class DailyStaffLogin(models.Model):
 
     def __str__(self):
         return f"{self.user} - {self.login_date}"
+
+
+class StaffRoster(models.Model):
+    BREAK_SHIFT = "break_shift"
+    STAIR_SHIFT = "stair_shift"
+    WEEKLY_OFF = "weekly_off"
+
+    SHIFT_TYPE_CHOICES = [
+        (BREAK_SHIFT, "Break Shift"),
+        (STAIR_SHIFT, "Stair Shift"),
+        (WEEKLY_OFF, "Weekly Off"),
+    ]
+
+    staff = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="roster_assignments",
+        limit_choices_to={"role": "kitchen_staff"},
+    )
+    location = models.ForeignKey(
+        "Location",
+        on_delete=models.PROTECT,
+        related_name="roster_assignments",
+    )
+    roster_date = models.DateField()
+    shift_code = models.CharField(max_length=20)
+    shift_type = models.CharField(max_length=20, choices=SHIFT_TYPE_CHOICES)
+    login_time = models.TimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="created_rosters",
+    )
+    is_published = models.BooleanField(default=False)
+    published_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["roster_date", "staff__employee_id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["staff", "roster_date"],
+                name="unique_staff_roster_date",
+            ),
+            models.CheckConstraint(
+                check=(
+                    Q(shift_type="weekly_off", login_time__isnull=True)
+                    | (~Q(shift_type="weekly_off") & Q(login_time__isnull=False))
+                ),
+                name="roster_login_time_matches_shift",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["location", "roster_date"], name="roster_location_date_idx"),
+            models.Index(fields=["staff", "roster_date"], name="roster_staff_date_idx"),
+            models.Index(fields=["is_published", "roster_date"], name="roster_pub_date_idx"),
+        ]
+
+    def clean(self):
+        super().clean()
+
+        if self.staff_id:
+            if self.staff.role != "kitchen_staff":
+                raise ValidationError({"staff": "Roster can be assigned only to kitchen staff."})
+
+            if self.staff.location_id != self.location_id:
+                raise ValidationError(
+                    {"location": "Roster location must match the staff member's assigned location."}
+                )
+
+        if self.shift_type == self.WEEKLY_OFF:
+            if self.login_time:
+                raise ValidationError({"login_time": "Weekly Off must not have a login time."})
+            self.shift_code = "WO"
+        else:
+            if not self.login_time:
+                raise ValidationError({"login_time": "Working shifts require a login time."})
+            if not self.shift_code:
+                raise ValidationError({"shift_code": "Working shifts require a shift code."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def publish(self):
+        self.is_published = True
+        self.published_at = timezone.now()
+        self.save(update_fields=["is_published", "published_at", "updated_at"])
+
+    def __str__(self):
+        return f"{self.staff} - {self.roster_date} - {self.shift_code}"
 
 
 
