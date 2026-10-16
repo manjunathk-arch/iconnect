@@ -3528,3 +3528,35 @@ def kitchen_log_report(request):
         "kitchen_log_report.html",
         context
     )
+
+
+# ===== Training SSO + staff feed (Hybb Kitchen Academy) =====
+import time, hmac, hashlib, base64
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import redirect
+from django.http import JsonResponse, HttpResponseForbidden
+from .models import CustomUser
+
+@login_required
+def go_training(request):
+    emp = str(request.user.employee_id)
+    payload = f"{emp}|{int(time.time()) + 300}"          # token valid 5 minutes
+    sig = hmac.new(settings.SSO_SECRET.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    token = base64.urlsafe_b64encode(payload.encode()).decode().rstrip("=") + "." + sig
+    return redirect(f"{settings.ACADEMY_URL}?sso={token}")
+
+def api_staff(request):
+    if request.GET.get("key") != settings.SYNC_KEY:
+        return HttpResponseForbidden("bad key")
+    rows = [{
+        "employee_id": u.employee_id,
+        "name": u.get_full_name() or u.username,
+        "role": u.role,
+        "kitchen": u.location.code if u.location else "",
+        "status": "active" if u.is_active else "left",
+    } for u in CustomUser.objects
+        .filter(role__in=["kitchen_staff", "kitchen_manager", "cluster_manager"])
+        .select_related("location")]
+    return JsonResponse({"staff": rows})
+# ===== end Training additions =====

@@ -141,6 +141,12 @@ urlpatterns = [
     name="bulk_upload_quality_feedback",),
     path("export/quality-feedback/",views.export_quality_feedback_csv,name="export_quality_feedback_csv",),
 
+
+    path("go-training/", views.go_training, name="go_training"),
+    path("api/staff/", views.api_staff, name="api_staff"),
+
+
+
     
 ]
 

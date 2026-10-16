@@ -384,3 +384,9 @@ CACHES = {
         "LOCATION": "hybbconnect-cache",
     }
 }
+
+
+# ===== Hybb Kitchen Academy integration =====
+SSO_SECRET  = os.environ.get("SSO_SECRET")
+SYNC_KEY    = os.environ.get("SYNC_KEY")
+ACADEMY_URL = os.environ.get("ACADEMY_URL")
