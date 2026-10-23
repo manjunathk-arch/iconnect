@@ -14,6 +14,7 @@
         <p class="sidebar-label">MANAGER MENU</p>
         <nav class="manager-nav">
             <a class="active" href="{% url 'manager_dashboard' %}"><i class="bi bi-grid-1x2"></i> Dashboard</a>
+            <a href="/go-training/" target="_blank"><i class="bi bi-mortarboard"></i> Training{% if training_pending %} <span class="badge rounded-pill bg-danger">{{ training_pending }}</span>{% endif %}</a>
             <a href="{% url 'staff_salary_slip' %}"><i class="bi bi-wallet2"></i><span> Salary draft </span></a>
             <a href="{% url 'manager_weekly_roster' %}"><i class="bi bi-calendar-week"></i> Staff Roster</a>
             <a href="{% url 'raise_staff_log' %}"><i class="bi bi-journal-plus"></i> Raise Staff Log</a>
