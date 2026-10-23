@@ -162,6 +162,8 @@ TEMPLATES = [
                 "django.contrib.messages.context_processors.messages",
 
                 "hybbconnect.context_processors.unread_notifications",
+                
+                "hybbconnect.context_processors.training_pending",
             ],
         },
     },
