@@ -46,7 +46,6 @@ import base64
 import hmac
 import hashlib
 
-import requests
 from django.conf import settings
 
 ACADEMY_EXEC_URL = getattr(
@@ -68,6 +67,11 @@ def _academy_build_token(emp):
 
 def _academy_fetch_count(emp):
     try:
+        # Import only when an Academy request is actually needed. This keeps
+        # unrelated pages such as login available if the optional integration
+        # dependency is missing from a local environment.
+        import requests
+
         resp = requests.post(
             ACADEMY_EXEC_URL,
             json={"fn": "pendingCount", "args": [_academy_build_token(emp)]},

@@ -5,6 +5,7 @@ from django.shortcuts import render, redirect
 from django import forms
 
 import pandas as pd
+from decimal import Decimal, InvalidOperation
 
 from .models import (
     CustomUser,
@@ -18,6 +19,7 @@ from .models import (
     Notification,
     DailyStaffLogin,
     StaffRoster,
+    GroomingAudit,
 )
 
 from django.contrib.auth import get_user_model
@@ -899,33 +901,63 @@ class SalarySlipAdmin(admin.ModelAdmin):
                     messages.error(request, f"❌ Missing: {', '.join(missing_cols)}")
                     return redirect("..")
 
-                created, skipped = 0, []
+                def cell_value(value, default=0):
+                    return default if pd.isna(value) else value
 
-                for _, row in df.iterrows():
-                    emp_id = str(row['employee_id']).strip()
+                def integer_value(value, column):
+                    number = Decimal(str(cell_value(value)))
+                    if not number.is_finite() or number != number.to_integral_value():
+                        raise ValueError(f"{column} must be a whole number")
+                    return int(number)
+
+                def decimal_value(value, column):
+                    try:
+                        number = Decimal(str(cell_value(value)))
+                    except (InvalidOperation, ValueError):
+                        raise ValueError(f"{column} must be a number")
+                    if not number.is_finite():
+                        raise ValueError(f"{column} must be a finite number")
+                    return number
+
+                monetary_columns = [
+                    'sac_off_ot', 'rating_incentive', 'km_mrd_incentive', 'arrears',
+                    'referral_bonus', 'mrd_deduction', 'km_mrd_deduction',
+                    'photo_deduction', 'missing_item_deduction', 'net_pay',
+                ]
+                created, skipped, row_errors = 0, [], []
+
+                for index, row in df.iterrows():
+                    row_number = index + 2
+                    raw_emp_id = cell_value(row['employee_id'], "")
+                    emp_id = str(raw_emp_id).strip()
+                    if isinstance(raw_emp_id, (int, float)) and float(raw_emp_id).is_integer():
+                        emp_id = str(int(raw_emp_id))
+
                     user = User.objects.filter(employee_id=emp_id).first()
-
                     if not user:
-                        skipped.append(emp_id)
+                        skipped.append(f"{emp_id or '(blank)'} (row {row_number})")
                         continue
 
-                    SalarySlip.objects.create(
-                        employee=user,
-                        month=row['month'],
-                        year=row['year'],
-                        present_days=row.get('present_days', 0) or 0,
-                        lop_days=row.get('lop_days', 0) or 0,
-                        sac_off_ot=row.get('sac_off_ot', 0) or 0,
-                        rating_incentive=row.get('rating_incentive', 0) or 0,
-                        km_mrd_incentive=row.get('km_mrd_incentive', 0) or 0,
-                        arrears=row.get('arrears', 0) or 0,
-                        referral_bonus=row.get('referral_bonus', 0) or 0,
-                        mrd_deduction=row.get('mrd_deduction', 0) or 0,
-                        km_mrd_deduction=row.get('km_mrd_deduction', 0) or 0,
-                        photo_deduction=row.get('photo_deduction', 0) or 0,
-                        missing_item_deduction=row.get('missing_item_deduction', 0) or 0,
-                        net_pay=row.get('net_pay', 0) or 0,
-                    )
+                    try:
+                        month = str(cell_value(row['month'], "")).strip()
+                        if not month:
+                            raise ValueError("month is required")
+
+                        values = {
+                            'employee': user,
+                            'month': month,
+                            'year': integer_value(row['year'], 'year'),
+                            'present_days': integer_value(row['present_days'], 'present_days'),
+                            'lop_days': integer_value(row['lop_days'], 'lop_days'),
+                        }
+                        values.update({
+                            column: decimal_value(row[column], column)
+                            for column in monetary_columns
+                        })
+                        SalarySlip.objects.create(**values)
+                    except (InvalidOperation, TypeError, ValueError, OverflowError) as exc:
+                        row_errors.append(f"Row {row_number}: {exc}")
+                        continue
                     created += 1
 
                 msg = f"✅ {created} salary slips uploaded."
@@ -933,6 +965,10 @@ class SalarySlipAdmin(admin.ModelAdmin):
                     msg += f" ⚠️ Skipped {len(skipped)} invalid employee IDs: {', '.join(skipped)}"
 
                 messages.success(request, msg)
+                for error in row_errors[:20]:
+                    messages.error(request, error)
+                if len(row_errors) > 20:
+                    messages.error(request, f"And {len(row_errors) - 20} more invalid row(s).")
                 return redirect("..")
 
         return render(request, 'upload_salary.html', {"form": UploadFileForm(), "title": "Upload Salary Slips"})
@@ -989,5 +1025,23 @@ class StaffRosterAdmin(admin.ModelAdmin):
     search_fields = ("staff__username", "staff__employee_id", "shift_code")
     date_hierarchy = "roster_date"
     autocomplete_fields = ("staff", "location", "created_by")
+
+
+@admin.register(GroomingAudit)
+class GroomingAuditAdmin(admin.ModelAdmin):
+    list_display = ("audit_datetime", "employee_id_snapshot", "employee_name_snapshot", "location_name_snapshot", "auditor_name_snapshot", "overall_result")
+    list_filter = ("overall_result", "kitchen_location", "audit_datetime")
+    search_fields = ("employee_id_snapshot", "employee_name_snapshot", "auditor_name_snapshot")
+    readonly_fields = tuple(field.name for field in GroomingAudit._meta.fields)
+    ordering = ("-audit_datetime",)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 

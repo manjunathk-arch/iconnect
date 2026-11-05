@@ -1,0 +1,670 @@
+
+{% extends "base.html" %}
+
+{% block title %}Grooming Audit{% endblock %}
+
+{% block content %}
+
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/css/select2.min.css"
+      rel="stylesheet">
+
+<style>
+    .select2-container {
+        width: 100% !important;
+    }
+
+    .select2-container .select2-selection--single {
+        height: 42px;
+        border: 1px solid #ced4da;
+        border-radius: 6px;
+    }
+
+    .select2-container--default .select2-selection--single
+    .select2-selection__rendered {
+        line-height: 40px;
+        padding-left: 12px;
+    }
+
+    .select2-container--default .select2-selection--single
+    .select2-selection__arrow {
+        height: 40px;
+    }
+
+    #preview {
+        max-height: 300px;
+        object-fit: contain;
+    }
+</style>
+
+<main class="container py-4" style="max-width:1100px">
+
+    <!-- Page Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Grooming Audit</h1>
+            <p class="text-muted">
+                Record the four grooming checks and a current employee photo.
+            </p>
+        </div>
+
+        <a class="btn btn-outline-secondary"
+           href="{% if request.user.role == 'cluster_manager' %}{% url 'cluster_dashboard' %}{% else %}{% url 'manager_dashboard' %}{% endif %}">
+            Dashboard
+        </a>
+    </div>
+
+    <!-- Messages -->
+    {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }}">
+            {{ message }}
+        </div>
+    {% endfor %}
+
+    <!-- Kitchen Location -->
+    <form method="get" class="card card-body mb-3">
+
+        <label for="location" class="form-label fw-semibold">
+            Kitchen location
+        </label>
+
+        <select id="location"
+                name="location"
+                class="form-select"
+                {% if not is_cluster %}disabled{% endif %}
+                required>
+
+            {% for location in locations %}
+                <option value="{{ location.pk }}"
+                    {% if selected_location == location.pk|stringformat:'s' %}selected{% endif %}>
+                    {{ location.name }} ({{ location.code }})
+                </option>
+            {% endfor %}
+
+        </select>
+
+        {% if not is_cluster and selected_location %}
+            <input type="hidden"
+                   name="location"
+                   value="{{ selected_location }}">
+        {% endif %}
+
+        {% if is_cluster %}
+            <button class="btn btn-success mt-3 align-self-start">
+                Load employees
+            </button>
+        {% endif %}
+
+    </form>
+
+    <!-- Grooming Audit Form -->
+    <form method="post"
+          action="{% url 'submit_grooming_audit' %}"
+          enctype="multipart/form-data"
+          class="card card-body"
+          id="auditForm">
+
+        {% csrf_token %}
+
+        <input type="hidden"
+               name="location"
+               id="auditLocation"
+               value="{{ selected_location }}">
+
+        <!-- Searchable Employee Selection -->
+        <label class="form-label fw-semibold" for="employee">
+            Active employee
+        </label>
+
+        <select id="employee"
+                name="employee"
+                class="form-select mb-3"
+                required>
+
+            <option value="">Type Employee ID or Name...</option>
+
+            {% for e in employees %}
+                <option value="{{ e.pk }}">
+                    {{ e.employee_id }} —
+                    {{ e.get_full_name|default:e.username }}
+                    · {{ e.get_role_display }}
+                </option>
+            {% endfor %}
+
+        </select>
+
+        <div id="employeeDetails"
+             class="alert alert-light d-none">
+        </div>
+
+        <!-- Grooming Checklist -->
+        <fieldset class="mb-3">
+
+            <legend class="fs-5">
+                Grooming checklist
+            </legend>
+
+            <div class="row g-3">
+
+                <div class="col-md-6">
+                    <label class="form-label">
+                        Jewelry &amp; Accessories
+                        <small class="text-muted">
+                            (Rings, bracelets, watches, chains,
+                            unauthorized accessories)
+                        </small>
+
+                        <select class="form-select check"
+                                name="jewelry_accessories"
+                                required>
+                            <option value="">Select</option>
+                            <option value="pass">Pass</option>
+                            <option value="fail">Fail</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">
+                        Shoes
+                        <small class="text-muted">
+                            (Proper kitchen shoes, clean,
+                            acceptable condition)
+                        </small>
+
+                        <select class="form-select check"
+                                name="shoes"
+                                required>
+                            <option value="">Select</option>
+                            <option value="pass">Pass</option>
+                            <option value="fail">Fail</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">
+                        Hands &amp; Nails
+                        <small class="text-muted">
+                            (Clean, trimmed, no polish
+                            or artificial nails)
+                        </small>
+
+                        <select class="form-select check"
+                                name="hands_nails"
+                                required>
+                            <option value="">Select</option>
+                            <option value="pass">Pass</option>
+                            <option value="fail">Fail</option>
+                        </select>
+                    </label>
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">
+                        Hair Net
+                        <small class="text-muted">
+                            (Worn properly, all hair covered,
+                            acceptable condition)
+                        </small>
+
+                        <select class="form-select check"
+                                name="hair_net"
+                                required>
+                            <option value="">Select</option>
+                            <option value="pass">Pass</option>
+                            <option value="fail">Fail</option>
+                        </select>
+                    </label>
+                </div>
+
+            </div>
+
+        </fieldset>
+
+        <!-- Overall Result -->
+        <div id="overall"
+             class="alert alert-secondary fw-bold fs-5"
+             aria-live="polite">
+            Overall result: complete all checks
+        </div>
+
+        <!-- Employee Photograph -->
+        <label for="photo" class="form-label fw-semibold">
+            Employee photograph
+            <small class="text-muted">
+                (JPEG, PNG or WebP, max 5 MB)
+            </small>
+        </label>
+
+        <input id="photo"
+               name="employee_photo"
+               type="file"
+               class="form-control"
+               accept="image/jpeg,image/png,image/webp"
+               capture="environment"
+               required>
+
+        <img id="preview"
+             class="d-none img-thumbnail mt-3"
+             alt="Photo preview">
+
+        <button id="retake"
+                type="button"
+                class="btn btn-outline-secondary mt-2 d-none align-self-start">
+            Retake photo
+        </button>
+
+        <!-- Remarks -->
+        <label for="remarks" class="form-label fw-semibold mt-3">
+            Remarks
+            <span class="text-muted">(optional)</span>
+        </label>
+
+        <textarea id="remarks"
+                  name="remarks"
+                  class="form-control"
+                  rows="3"
+                  maxlength="5000"></textarea>
+
+        <!-- Submit -->
+        <button class="btn btn-success btn-lg mt-4"
+                type="submit">
+            Submit Audit
+        </button>
+
+    </form>
+
+    <!-- Audit History -->
+    <section class="card card-body mt-4">
+
+        <h2 class="h4">Audits submitted by you</h2>
+
+        <div class="table-responsive">
+
+            <table class="table table-sm">
+
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Kitchen</th>
+                        <th>Employee</th>
+                        <th>Result</th>
+                        <th>Photo</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    {% for audit in history %}
+                        <tr>
+
+                            <td>
+                                {{ audit.audit_datetime|date:'d M Y H:i' }}
+                            </td>
+
+                            <td>
+                                {{ audit.location_name_snapshot }}
+                            </td>
+
+                            <td>
+                                {{ audit.employee_name_snapshot }}
+                                ({{ audit.employee_id_snapshot }})
+                            </td>
+
+                            <td>
+                                <span class="badge
+                                    {% if audit.overall_result == 'pass' %}
+                                        bg-success
+                                    {% else %}
+                                        bg-danger
+                                    {% endif %}">
+                                    {{ audit.get_overall_result_display }}
+                                </span>
+                            </td>
+
+                            <td>
+                                <a href="{% url 'grooming_audit_photo' audit.pk %}">
+                                    View
+                                </a>
+                            </td>
+
+                        </tr>
+
+                    {% empty %}
+                        <tr>
+                            <td colspan="5">
+                                No audits submitted yet.
+                            </td>
+                        </tr>
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </section>
+
+</main>
+
+
+<!-- jQuery and Select2 -->
+<!-- If base.html already loads jQuery, remove this jQuery script tag. -->
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js"></script>
+
+
+<script>
+
+document.addEventListener('DOMContentLoaded', function () {
+
+    // =========================================
+    // 1. SEARCHABLE EMPLOYEE DROPDOWN
+    // =========================================
+
+    const employeeSelect = document.getElementById('employee');
+    const detail = document.getElementById('employeeDetails');
+    const locationSelect = document.getElementById('location');
+    const auditLocation = document.getElementById('auditLocation');
+
+    $('#employee').select2({
+        placeholder: 'Type Employee ID or Name...',
+        allowClear: true,
+        width: '100%',
+        minimumResultsForSearch: 0
+    });
+
+    // Display selected employee details
+
+    $('#employee').on('change', function () {
+
+        const selected = this.selectedOptions[0];
+
+        if (!selected || !selected.value) {
+            detail.classList.add('d-none');
+            detail.textContent = '';
+            return;
+        }
+
+        detail.textContent = 'Selected employee: ' + selected.text;
+        detail.classList.remove('d-none');
+
+    });
+
+
+    // =========================================
+    // 2. CLUSTER MANAGER LOCATION CHANGE
+    // =========================================
+
+    if (locationSelect && !locationSelect.disabled) {
+
+        locationSelect.addEventListener('change', async function () {
+
+            const selectedLocation = locationSelect.value;
+
+            auditLocation.value = selectedLocation;
+
+            // Reset employee dropdown
+
+            $('#employee').empty();
+
+            $('#employee').append(
+                new Option('Loading employees...', '', true, true)
+            );
+
+            $('#employee').trigger('change');
+
+            try {
+
+                const response = await fetch(
+                    '{% url "grooming_audit_employees" %}?location=' +
+                    encodeURIComponent(selectedLocation),
+                    {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error('Unable to load employees');
+                }
+
+                const data = await response.json();
+
+                // Clear old employees
+
+                $('#employee').empty();
+
+                $('#employee').append(
+                    new Option(
+                        'Type Employee ID or Name...',
+                        '',
+                        true,
+                        true
+                    )
+                );
+
+                // Load new employees
+
+                data.employees.forEach(function (e) {
+
+                    const option = new Option(
+                        e.employee_id + ' — ' +
+                        e.name + ' · ' +
+                        e.designation,
+                        e.id,
+                        false,
+                        false
+                    );
+
+                    $('#employee').append(option);
+
+                });
+
+                $('#employee').val('').trigger('change');
+
+            } catch (error) {
+
+                console.error(error);
+
+                $('#employee').empty();
+
+                $('#employee').append(
+                    new Option(
+                        'Could not load employees',
+                        '',
+                        true,
+                        true
+                    )
+                );
+
+                $('#employee').trigger('change');
+
+                alert('Unable to load employees. Please try again.');
+
+            }
+
+        });
+
+    }
+
+
+    // =========================================
+    // 3. AUTOMATIC GROOMING RESULT
+    // =========================================
+
+    const checks = [
+        ...document.querySelectorAll('.check')
+    ];
+
+    const result = document.getElementById('overall');
+
+    function updateResult() {
+
+        if (checks.some(c => !c.value)) {
+
+            result.className =
+                'alert alert-secondary fw-bold fs-5';
+
+            result.textContent =
+                'Overall result: complete all checks';
+
+            return;
+        }
+
+        const pass = checks.every(
+            c => c.value === 'pass'
+        );
+
+        result.className =
+            'alert fw-bold fs-4 ' +
+            (pass ? 'alert-success' : 'alert-danger');
+
+        result.textContent =
+            'Overall result: ' +
+            (pass ? 'PASS' : 'FAIL');
+
+    }
+
+    checks.forEach(function (check) {
+        check.addEventListener('change', updateResult);
+    });
+
+
+    // =========================================
+    // 4. EMPLOYEE PHOTO PREVIEW
+    // =========================================
+
+    const photo = document.getElementById('photo');
+    const preview = document.getElementById('preview');
+    const retake = document.getElementById('retake');
+
+    let previewUrl = null;
+
+    photo.addEventListener('change', function () {
+
+        const file = photo.files[0];
+
+        if (!file) {
+            return;
+        }
+
+        const allowedTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/webp'
+        ];
+
+        if (!allowedTypes.includes(file.type)) {
+
+            alert('Please upload a JPEG, PNG or WebP image.');
+
+            photo.value = '';
+
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+
+            alert('Photo must be 5 MB or smaller.');
+
+            photo.value = '';
+
+            return;
+        }
+
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+        }
+
+        previewUrl = URL.createObjectURL(file);
+
+        preview.src = previewUrl;
+
+        preview.classList.remove('d-none');
+
+        retake.classList.remove('d-none');
+
+    });
+
+
+    // =========================================
+    // 5. RETAKE PHOTO
+    // =========================================
+
+    retake.addEventListener('click', function () {
+
+        photo.value = '';
+
+        preview.src = '';
+
+        preview.classList.add('d-none');
+
+        retake.classList.add('d-none');
+
+        if (previewUrl) {
+            URL.revokeObjectURL(previewUrl);
+            previewUrl = null;
+        }
+
+    });
+
+
+    // =========================================
+    // 6. FORM VALIDATION
+    // =========================================
+
+    document.getElementById('auditForm').addEventListener(
+        'submit',
+        function (event) {
+
+            if (!employeeSelect.value) {
+
+                event.preventDefault();
+
+                alert('Please select an active employee.');
+
+                $('#employee').select2('open');
+
+                return;
+            }
+
+            if (!auditLocation.value) {
+
+                event.preventDefault();
+
+                alert('Please select a kitchen location.');
+
+                return;
+            }
+
+            if (!photo.files.length) {
+
+                event.preventDefault();
+
+                alert('Please capture or upload an employee photo.');
+
+                return;
+            }
+
+            if (photo.files[0].size > 5 * 1024 * 1024) {
+
+                event.preventDefault();
+
+                alert('Photo must be 5 MB or smaller.');
+
+                return;
+            }
+
+        }
+    );
+
+});
+
+</script>
+
+{% endblock %}

@@ -293,7 +293,9 @@ STORAGES = {
 
 MEDIA_URL = "/media/"
 
-MEDIA_ROOT = BASE_DIR / "media"
+# A Render persistent disk can be mounted outside the deploy directory and
+# selected with MEDIA_ROOT. Local development keeps the existing default.
+MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT") or (BASE_DIR / "media"))
 
 
 # ============================================================

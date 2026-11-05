@@ -20,6 +20,90 @@ class Location(models.Model):
         return f"{self.code} - {self.name}"
 
 
+def validate_grooming_photo(image):
+    """Validate size and decoded image format before accepting an audit photo."""
+    from PIL import Image, UnidentifiedImageError
+    from django.core.exceptions import ValidationError
+
+    if image.size > 5 * 1024 * 1024:
+        raise ValidationError("Employee photo must be 5 MB or smaller.")
+    allowed = {"JPEG": {"jpg", "jpeg"}, "PNG": {"png"}, "WEBP": {"webp"}}
+    ext = (image.name.rsplit(".", 1)[-1].lower() if "." in image.name else "")
+    try:
+        image.seek(0)
+        with Image.open(image) as decoded:
+            if decoded.width * decoded.height > 25_000_000:
+                raise ValidationError("Employee photo dimensions are too large.")
+            decoded.verify()
+            fmt = decoded.format
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
+        raise ValidationError("Upload a valid JPEG, PNG, or WebP image.")
+    finally:
+        image.seek(0)
+    if fmt not in allowed or ext not in allowed[fmt]:
+        raise ValidationError("Photo extension and image format must match (JPEG, PNG, or WebP).")
+
+
+class GroomingAudit(models.Model):
+    PASS = "pass"
+    FAIL = "fail"
+    RESULT_CHOICES = [(PASS, "Pass"), (FAIL, "Fail")]
+
+    kitchen_location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="grooming_audits")
+    employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="grooming_audits")
+    auditor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="conducted_grooming_audits")
+    audit_datetime = models.DateTimeField(default=timezone.now, editable=False)
+    jewelry_accessories = models.CharField(max_length=4, choices=RESULT_CHOICES)
+    shoes = models.CharField(max_length=4, choices=RESULT_CHOICES)
+    hands_nails = models.CharField(max_length=4, choices=RESULT_CHOICES)
+    hair_net = models.CharField(max_length=4, choices=RESULT_CHOICES)
+    overall_result = models.CharField(max_length=4, choices=RESULT_CHOICES, editable=False)
+    employee_photo = models.ImageField(upload_to="grooming_audits/%Y/%m/", validators=[validate_grooming_photo])
+    remarks = models.TextField(blank=True)
+    employee_name_snapshot = models.CharField(max_length=301)
+    employee_id_snapshot = models.CharField(max_length=20)
+    designation_snapshot = models.CharField(max_length=30)
+    location_name_snapshot = models.CharField(max_length=120)
+    auditor_name_snapshot = models.CharField(max_length=301)
+    auditor_role_snapshot = models.CharField(max_length=30)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-audit_datetime", "-id"]
+        indexes = [
+            models.Index(fields=["kitchen_location", "-audit_datetime"], name="groom_loc_date_idx"),
+            models.Index(fields=["employee", "-audit_datetime"], name="groom_emp_date_idx"),
+            models.Index(fields=["auditor", "-audit_datetime"], name="groom_aud_date_idx"),
+            models.Index(fields=["audit_datetime"], name="groom_date_idx"),
+            models.Index(fields=["overall_result", "-audit_datetime"], name="groom_result_date_idx"),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.pk and type(self).objects.filter(pk=self.pk).exists():
+            raise ValidationError("Grooming audit records are immutable.")
+        results = [self.jewelry_accessories, self.shoes, self.hands_nails, self.hair_net]
+        if any(value not in {self.PASS, self.FAIL} for value in results):
+            raise ValidationError("All four grooming checks must be completed.")
+        self.overall_result = self.PASS if all(value == self.PASS for value in results) else self.FAIL
+        if self.employee_id and not self.employee_name_snapshot:
+            self.employee_name_snapshot = self.employee.get_full_name() or self.employee.username
+        if self.employee_id and not self.employee_id_snapshot:
+            self.employee_id_snapshot = self.employee.employee_id
+        if self.employee_id and not self.designation_snapshot:
+            self.designation_snapshot = self.employee.role
+        if self.kitchen_location_id and not self.location_name_snapshot:
+            self.location_name_snapshot = str(self.kitchen_location)
+        if self.auditor_id and not self.auditor_name_snapshot:
+            self.auditor_name_snapshot = self.auditor.get_full_name() or self.auditor.username
+        if self.auditor_id and not self.auditor_role_snapshot:
+            self.auditor_role_snapshot = self.auditor.role
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.employee_id_snapshot} - {self.audit_datetime:%Y-%m-%d %H:%M} ({self.overall_result})"
+
+
 # ---------------------------------------------------------
 # 2️⃣ CORRECT CUSTOM USER MODEL  (ONLY ONE)
 # ---------------------------------------------------------

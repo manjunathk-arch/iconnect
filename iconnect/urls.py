@@ -19,10 +19,12 @@ from django.urls import path, include
 from django.shortcuts import redirect
 from django.conf import settings
 from django.conf.urls.static import static
+from hybbconnect import grooming_views
 
 
 urlpatterns = [
     path('', lambda request: redirect('login')),
+    path("media/grooming_audits/<path:photo_path>", grooming_views.secure_media_photo, name="secure_grooming_media"),
     path("",include('hybbconnect.urls')),
     path("admin/", admin.site.urls),
 ]

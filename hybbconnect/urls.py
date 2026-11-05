@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import grooming_views
 
 urlpatterns = [
     # ------------------------
@@ -23,6 +24,13 @@ urlpatterns = [
     path('cluster_dashboard/', views.cluster_dashboard, name='cluster_dashboard'),
     path('owner_dashboard/', views.owner_dashboard, name='owner_dashboard'),
     path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
+    path("grooming-audit/<int:audit_id>/photo/file/", grooming_views.grooming_audit_photo_file, name="grooming_audit_photo_file"),
+    path("grooming-audit/", grooming_views.grooming_audit, name="grooming_audit"),
+    path("grooming-audit/employees/", grooming_views.grooming_audit_employees, name="grooming_audit_employees"),
+    path("grooming-audit/submit/", grooming_views.submit_grooming_audit, name="submit_grooming_audit"),
+    path("admin/grooming-audits/", grooming_views.grooming_audit_report, name="grooming_audit_report"),
+    path("admin/grooming-audits/export/<str:file_format>/", grooming_views.grooming_audit_export, name="grooming_audit_export"),
+    path("grooming-audit/<int:audit_id>/photo/", grooming_views.grooming_audit_photo, name="grooming_audit_photo"),
     path("roster/", views.manager_weekly_roster, name="manager_weekly_roster"),
     path("admin-roster/", views.admin_roster_management, name="admin_roster_management"),
     path("admin-roster/export/", views.export_admin_roster_csv, name="export_admin_roster_csv"),
