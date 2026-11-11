@@ -62,6 +62,7 @@ DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
 ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
+    "iconnect-k4fg.onrender.com",
 ]
 
 # Automatically allow Render's hostname
@@ -322,6 +323,14 @@ LOGOUT_REDIRECT_URL = "/login/"
 
 CSRF_TRUSTED_ORIGINS = []
 
+# Render terminates HTTPS at its proxy. Trust the forwarded protocol so
+# Django can recognize the original request as secure behind that proxy.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Keep the deployed Render origin trusted even when Render's injected
+# RENDER_EXTERNAL_HOSTNAME variable is not present in the service environment.
+CSRF_TRUSTED_ORIGINS.append("https://iconnect-k4fg.onrender.com")
+
 
 # Render URL
 if RENDER_EXTERNAL_HOSTNAME:
@@ -344,11 +353,13 @@ if CUSTOM_DOMAIN:
 if not DEBUG:
 
     # HTTPS
-    SECURE_SSL_REDIRECT = False
+    SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "False").lower() == "true"
 
     # Cookies only sent over HTTPS
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
+    CSRF_COOKIE_SAMESITE = os.environ.get("CSRF_COOKIE_SAMESITE", "Lax")
 
     # Prevent browser MIME sniffing
     SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -369,6 +380,8 @@ else:
 
     SESSION_COOKIE_SECURE = False
     CSRF_COOKIE_SECURE = False
+    SESSION_COOKIE_SAMESITE = os.environ.get("SESSION_COOKIE_SAMESITE", "Lax")
+    CSRF_COOKIE_SAMESITE = os.environ.get("CSRF_COOKIE_SAMESITE", "Lax")
 
 
 # ============================================================
