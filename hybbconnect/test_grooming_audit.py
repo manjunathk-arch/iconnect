@@ -219,6 +219,24 @@ class GroomingAuditTests(TestCase):
         with self.assertRaises(Exception):
             audit.save()
 
+    def test_photo_is_shown_on_detail_and_admin_report(self):
+        self.submit()
+        audit = GroomingAudit.objects.get()
+        self.client.force_login(self.admin)
+        detail = self.client.get(reverse("grooming_audit_photo", args=[audit.pk]))
+        report = self.client.get(reverse("grooming_audit_report"))
+        photo_url = reverse("grooming_audit_photo_file", args=[audit.pk])
+        self.assertContains(detail, photo_url)
+        self.assertContains(report, photo_url)
+        self.assertContains(report, 'data-bs-toggle="modal"')
+
+    def test_missing_photo_file_returns_404_without_broken_response(self):
+        self.submit()
+        audit = GroomingAudit.objects.get()
+        audit.employee_photo.storage.delete(audit.employee_photo.name)
+        self.client.force_login(self.admin)
+        self.assertEqual(self.client.get(reverse("grooming_audit_photo_file", args=[audit.pk])).status_code, 404)
+
     def test_direct_media_url_for_photo_is_protected(self):
         self.submit()
         audit = GroomingAudit.objects.get()

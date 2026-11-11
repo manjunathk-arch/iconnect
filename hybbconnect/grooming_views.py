@@ -6,7 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
 from django.db.models import Count, Q
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
@@ -231,9 +231,17 @@ def grooming_audit_photo_file(request, audit_id):
     audit = get_object_or_404(GroomingAudit, pk=audit_id)
     if not can_view_audit(request.user, audit):
         return HttpResponseForbidden()
-    from django.http import FileResponse
     import mimetypes
-    return FileResponse(audit.employee_photo.open("rb"), content_type=mimetypes.guess_type(audit.employee_photo.name)[0] or "application/octet-stream")
+    if not audit.employee_photo:
+        raise Http404("Photo is unavailable.")
+    try:
+        photo = audit.employee_photo.open("rb")
+    except (FileNotFoundError, OSError):
+        raise Http404("Photo is unavailable.")
+    response = FileResponse(photo, content_type=mimetypes.guess_type(audit.employee_photo.name)[0] or "application/octet-stream")
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @login_required
@@ -243,7 +251,13 @@ def secure_media_photo(request, photo_path):
     audit = GroomingAudit.objects.filter(employee_photo=stored_name).first()
     if not audit or not can_view_audit(request.user, audit):
         return HttpResponseForbidden()
-    from django.http import FileResponse
     import mimetypes
-    return FileResponse(audit.employee_photo.open("rb"), content_type=mimetypes.guess_type(stored_name)[0] or "application/octet-stream")
+    try:
+        photo = audit.employee_photo.open("rb")
+    except (FileNotFoundError, OSError):
+        raise Http404("Photo is unavailable.")
+    response = FileResponse(photo, content_type=mimetypes.guess_type(stored_name)[0] or "application/octet-stream")
+    response["Cache-Control"] = "private, no-store"
+    response["X-Content-Type-Options"] = "nosniff"
+    return response
 
