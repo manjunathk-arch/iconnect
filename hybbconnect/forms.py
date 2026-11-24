@@ -372,13 +372,28 @@ class StaffRosterForm(forms.ModelForm):
         self.fields["staff"].queryset = CustomUser.objects.none()
 
         location_id = self.data.get("location") if self.data else None
+        roster_date_raw = self.data.get("roster_date") if self.data else None
+        try:
+            from datetime import date
+            roster_date = date.fromisoformat(roster_date_raw) if roster_date_raw else None
+        except ValueError:
+            roster_date = None
         if location_id:
-            self.fields["staff"].queryset = CustomUser.objects.filter(
+            eligible = CustomUser.objects.filter(
                 role="kitchen_staff",
                 is_active=True,
                 location_id=location_id,
                 location__in=self.authorized_locations,
-            ).order_by("employee_id", "username")
+            )
+            if roster_date:
+                from .models import StaffMovement
+                future_ids = StaffMovement.objects.filter(
+                    to_location_id=location_id,
+                    effective_date__lte=roster_date,
+                    status__in=["ACCEPTED", "SCHEDULED", "COMPLETED"],
+                ).values_list("employee_id", flat=True)
+                eligible |= CustomUser.objects.filter(pk__in=future_ids, is_active=True, role="kitchen_staff")
+            self.fields["staff"].queryset = eligible.distinct().order_by("employee_id", "username")
         elif self.instance.pk:
             self.fields["staff"].queryset = CustomUser.objects.filter(
                 role="kitchen_staff",
@@ -409,7 +424,9 @@ class StaffRosterForm(forms.ModelForm):
             raise forms.ValidationError("You are not authorized to manage this outlet.")
 
         if staff and location and staff.location_id != location.id:
-            raise forms.ValidationError("Selected staff member does not belong to this outlet.")
+            from .models import StaffMovement
+            if not StaffMovement.objects.filter(employee=staff, to_location=location, effective_date__lte=cleaned.get("roster_date"), status__in=["ACCEPTED", "SCHEDULED", "COMPLETED"]).exists():
+                raise forms.ValidationError("Selected staff member does not belong to this outlet on the roster date.")
 
         if shift_type == StaffRoster.WEEKLY_OFF:
             cleaned["login_time"] = None

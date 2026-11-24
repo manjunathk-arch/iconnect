@@ -476,9 +476,11 @@ class StaffRoster(models.Model):
             if self.staff.role != "kitchen_staff":
                 raise ValidationError({"staff": "Roster can be assigned only to kitchen staff."})
 
-            if self.staff.location_id != self.location_id:
+            future_transfer = StaffMovement.objects.filter(employee=self.staff, to_location=self.location, effective_date__lte=self.roster_date, status__in=["ACCEPTED", "SCHEDULED", "COMPLETED"]).exists()
+            historical_assignment = EmployeeLocationHistory.objects.filter(employee=self.staff, location=self.location, valid_from__lte=self.roster_date).filter(Q(valid_to__isnull=True) | Q(valid_to__gt=self.roster_date)).exists()
+            if self.staff.location_id != self.location_id and not (future_transfer or historical_assignment):
                 raise ValidationError(
-                    {"location": "Roster location must match the staff member's assigned location."}
+                    {"location": "Roster location must match the staff member's assignment on the roster date."}
                 )
 
         if self.shift_type == self.WEEKLY_OFF:
@@ -566,6 +568,77 @@ class Attendance(models.Model):
         if self.punch_in and self.punch_out:
             self.working_hours = self.punch_out - self.punch_in
         super().save(*args, **kwargs)
+
+
+class DailyAttendance(models.Model):
+    TYPES = [(v, v) for v in ("Present", "LOP", "Weekly OFF", "LOP I", "LOP U", "Half Day")]
+    employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="daily_attendance")
+    attendance_date = models.DateField()
+    attendance_type = models.CharField(max_length=20, choices=TYPES)
+    location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="daily_attendance")
+    marked_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="marked_daily_attendance")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["employee", "attendance_date"], name="unique_daily_attendance_employee_date")]
+        indexes = [models.Index(fields=["attendance_date", "location"], name="daily_att_date_loc_idx")]
+
+
+class AttendanceAuditLog(models.Model):
+    attendance = models.ForeignKey(DailyAttendance, on_delete=models.PROTECT, related_name="audit_logs")
+    old_attendance_type = models.CharField(max_length=20, blank=True)
+    new_attendance_type = models.CharField(max_length=20)
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    changed_at = models.DateTimeField(auto_now_add=True)
+    correction_reason = models.TextField(blank=True)
+    action_type = models.CharField(max_length=20, default="create")
+
+
+class StaffMovement(models.Model):
+    STATUS = [(x, x.replace("_", " ").title()) for x in ("PENDING_ACCEPTANCE", "ACCEPTED", "REJECTED", "SCHEDULED", "COMPLETED", "CANCELLED")]
+    employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="staff_movements")
+    from_location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="movements_from")
+    to_location = models.ForeignKey(Location, on_delete=models.PROTECT, related_name="movements_to")
+    effective_date = models.DateField()
+    movement_reason = models.CharField(max_length=100)
+    remarks = models.TextField(blank=True)
+    requested_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="requested_movements")
+    requested_at = models.DateTimeField(auto_now_add=True)
+    accepted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="accepted_movements")
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    rejected_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="rejected_movements")
+    rejected_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True)
+    status = models.CharField(max_length=24, choices=STATUS, default="PENDING_ACCEPTANCE")
+    completed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["status", "effective_date"], name="movement_status_date_idx"), models.Index(fields=["employee", "effective_date"], name="movement_employee_date_idx")]
+
+
+class EmployeeLocationHistory(models.Model):
+    employee = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="location_history")
+    location = models.ForeignKey(Location, on_delete=models.PROTECT)
+    valid_from = models.DateField()
+    valid_to = models.DateField(null=True, blank=True)
+    movement_reference = models.ForeignKey(StaffMovement, on_delete=models.PROTECT, null=True, blank=True, related_name="location_history")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["employee", "valid_from"]
+        indexes = [models.Index(fields=["employee", "valid_from", "valid_to"], name="emp_loc_hist_dates_idx")]
+
+
+class StaffMovementAuditLog(models.Model):
+    movement = models.ForeignKey(StaffMovement, on_delete=models.PROTECT, related_name="audit_logs")
+    changed_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    action = models.CharField(max_length=30)
+    reason = models.TextField(blank=True)
+    changed_at = models.DateTimeField(auto_now_add=True)
 
 
 

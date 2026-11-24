@@ -1,8 +1,13 @@
 from django.urls import path
 from . import views
 from . import grooming_views
+from . import attendance_movement
 
 urlpatterns = [
+    path("daily-attendance/", attendance_movement.daily_attendance, name="daily_attendance"),
+    path("admin-daily-attendance/", attendance_movement.admin_daily_attendance, name="admin_daily_attendance"),
+    path("staff-movement/", attendance_movement.staff_movement, name="staff_movement"),
+    path("staff-movement/export/", attendance_movement.export_movements, name="export_movements"),
     # ------------------------
     # Auth
     # ------------------------
