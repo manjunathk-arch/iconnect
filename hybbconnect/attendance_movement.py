@@ -120,15 +120,21 @@ def daily_attendance(request):
                     pass
         messages.success(request, "Attendance saved.")
         return redirect(f"/daily-attendance/?date={attendance_date}&location={location.pk}")
-    employees = CustomUser.objects.filter(is_active=True, role__in=["kitchen_staff", "kitchen_manager"], location=location).order_by("employee_id") if location else CustomUser.objects.none()
-    if location:
-        historical_assignments = EmployeeLocationHistory.objects.filter(location=location, valid_from__lte=attendance_date).filter(Q(valid_to__isnull=True) | Q(valid_to__gt=attendance_date)).values_list("employee_id", flat=True)
-        employees = (employees | CustomUser.objects.filter(pk__in=historical_assignments, is_active=True, role__in=["kitchen_staff", "kitchen_manager"])).distinct().order_by("employee_id")
     records_qs = DailyAttendance.objects.select_related("employee").filter(attendance_date=attendance_date)
     if location:
         records_qs = records_qs.filter(location=location)
+        historical_assignments = EmployeeLocationHistory.objects.filter(location=location, valid_from__lte=attendance_date).filter(Q(valid_to__isnull=True) | Q(valid_to__gt=attendance_date)).values_list("employee_id", flat=True)
         historic_ids = records_qs.values_list("employee_id", flat=True)
-        employees = (employees | CustomUser.objects.filter(pk__in=historic_ids)).distinct().order_by("employee_id")
+        employees = CustomUser.objects.filter(
+            is_active=True,
+            role__in=["kitchen_staff", "kitchen_manager"],
+        ).filter(
+            Q(location=location)
+            | Q(pk__in=historical_assignments)
+            | Q(pk__in=historic_ids)
+        ).distinct().order_by("employee_id")
+    else:
+        employees = CustomUser.objects.none()
     records = {r.employee_id: r for r in records_qs}
     return render(request, "daily_attendance.html", {"locations": locations, "location": location, "date": attendance_date, "employees": employees, "records": records, "types": DailyAttendance.TYPES, "can_mark": request.user.role in {"kitchen_manager", "admin"}})
 

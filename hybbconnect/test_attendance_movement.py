@@ -31,6 +31,12 @@ class AttendanceMovementTests(TestCase):
         self.assertEqual(record.attendance_type, "Present")
         self.assertEqual(AttendanceAuditLog.objects.filter(attendance=record).count(), 1)
 
+    def test_daily_attendance_page_loads_for_kitchen_manager(self):
+        self.client.force_login(self.km)
+        response = self.client.get(reverse("daily_attendance"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Daily Attendance")
+
     def test_duplicate_attendance_is_updated_not_duplicated(self):
         self.client.force_login(self.km)
         today = timezone.localdate()
