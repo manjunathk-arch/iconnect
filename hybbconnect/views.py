@@ -1898,7 +1898,13 @@ def view_kitchen_managers(request):
 @user_passes_test(lambda u: u.role == "cluster_manager")
 def view_kitchen_staff(request):
     user = request.user
-    assigned_locations = user.cluster_manager_profile.locations.all()
+    # A cluster manager may exist without a profile if it was created before
+    # the profile signal/data migration ran. Keep the page available without
+    # exposing staff from unassigned locations.
+    if hasattr(user, "cluster_manager_profile"):
+        assigned_locations = user.cluster_manager_profile.locations.all()
+    else:
+        assigned_locations = Location.objects.none()
     kitchen_staff = CustomUser.objects.filter(role="kitchen_staff", location__in=assigned_locations)
     return render(request, "view_kitchen_staff.html", {"kitchen_staff": kitchen_staff})
 
